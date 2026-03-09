@@ -1,0 +1,298 @@
+# =============================================================================
+# PRIVATE CORPORATE AI — Docker Compose v3.9
+# Stack: Ollama + Qdrant + RAG Backend (FastAPI) + Open WebUI + Nginx
+# Licenza componenti: Apache 2.0 / MIT (uso commerciale permesso)
+# =============================================================================
+#
+# MODALITA' DI AVVIO:
+#
+#   FULL (GPU NVIDIA - consigliata):
+#       docker compose --env-file .env up -d
+#
+#   LITE (CPU-only - nessuna GPU richiesta):
+#       docker compose -f docker-compose.yaml -f docker-compose.lite.yaml \
+#         --env-file .env up -d
+#
+# Stop:  docker compose [-f ...] down
+# Log:   docker compose logs -f [servizio]
+# =============================================================================
+
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# RETI INTERNE — isolamento per sicurezza
+# ---------------------------------------------------------------------------
+networks:
+  # Rete frontend: Nginx ↔ WebUI ↔ RAG Backend
+  frontend_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+  # Rete backend: RAG Backend ↔ Ollama ↔ Qdrant
+  backend_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+# ---------------------------------------------------------------------------
+# VOLUMI PERSISTENTI
+# ---------------------------------------------------------------------------
+volumes:
+  ollama_data:        # Modelli LLM scaricati (possono occupare 4-40GB+)
+    driver: local
+  qdrant_data:        # Indice vettoriale e collezioni
+    driver: local
+  webui_data:         # Configurazioni e cronologia chat Open WebUI
+    driver: local
+  rag_uploads:        # Documenti caricati dagli utenti (PDF, DOCX, TXT)
+    driver: local
+  nginx_logs:         # Log di accesso e errori Nginx
+    driver: local
+
+# ---------------------------------------------------------------------------
+# SERVIZI
+# ---------------------------------------------------------------------------
+services:
+
+  # =========================================================================
+  # 1. OLLAMA — Inference Engine LLM con supporto GPU NVIDIA
+  #    Immagine: ollama/ollama (Apache 2.0)
+  #    Porta interna: 11434
+  # =========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: corporate_ai_ollama
+    restart: unless-stopped
+    networks:
+      - backend_net
+    volumes:
+      - ollama_data:/root/.ollama       # Persistenza modelli
+    environment:
+      - OLLAMA_HOST=0.0.0.0             # Ascolta su tutti gli indirizzi interni
+      - OLLAMA_NUM_PARALLEL=2           # Richieste parallele (ridotto a 1 nel override LITE)
+      - OLLAMA_MAX_LOADED_MODELS=1      # Modelli in memoria simultaneamente
+      - OLLAMA_NUM_THREADS=${OLLAMA_CPU_THREADS:-0}   # Thread CPU (0=auto, override in LITE)
+      - TZ=${TZ:-Europe/Rome}
+    # Healthcheck: verifica che Ollama risponda
+    healthcheck:
+      # ollama:latest non include curl/wget — healthcheck delegato al RAG backend
+      # che verifica la connettivita' con tenacity retry all'avvio (app.py)
+      disable: true
+    labels:
+      - "com.corporate-ai.service=inference"
+      - "com.corporate-ai.description=Motore di inferenza LLM locale"
+
+  # =========================================================================
+  # 2. OLLAMA MODEL PULLER — Scarica automaticamente i modelli configurati
+  #    Si avvia una sola volta e termina (restart: on-failure)
+  # =========================================================================
+  ollama_init:
+    image: ollama/ollama:latest
+    container_name: corporate_ai_ollama_init
+    restart: on-failure
+    networks:
+      - backend_net
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    # Scarica il modello LLM e il modello di embedding configurati in .env
+    entrypoint: >
+      /bin/sh -c "
+        echo '==> Download modello LLM: ${LLM_MODEL}';
+        ollama pull ${LLM_MODEL};
+        echo '==> Download modello Embedding: ${EMBEDDING_MODEL}';
+        ollama pull ${EMBEDDING_MODEL};
+        echo '==> Modelli pronti!';
+      "
+    volumes:
+      - ollama_data:/root/.ollama
+    labels:
+      - "com.corporate-ai.service=init"
+
+  # =========================================================================
+  # 3. QDRANT — Vector Database ad alte prestazioni
+  #    Immagine: qdrant/qdrant (Apache 2.0)
+  #    Porta REST: 6333 | Porta gRPC: 6334
+  # =========================================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: corporate_ai_qdrant
+    restart: unless-stopped
+    networks:
+      - backend_net
+    volumes:
+      - qdrant_data:/qdrant/storage      # Persistenza collezioni vettoriali
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-changeme}
+      - QDRANT__LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-Europe/Rome}
+    healthcheck:
+      # qdrant:latest e' distroless: nessun binario (curl/wget/sh) disponibile.
+      # Il healthcheck e' delegato al RAG backend che verifica la connettivita'
+      # a Qdrant al proprio avvio tramite tenacity retry (app.py).
+      disable: true
+    labels:
+      - "com.corporate-ai.service=vectordb"
+      - "com.corporate-ai.description=Database vettoriale per embeddings documenti"
+
+  # =========================================================================
+  # 4. RAG BACKEND — FastAPI + LangChain (il cuore del sistema)
+  #    Pipeline: Upload → Chunking → Embedding → Qdrant → LLM → Risposta
+  #    Porta interna: 8000
+  # =========================================================================
+  rag_backend:
+    build:
+      context: ./rag_backend
+      dockerfile: Dockerfile
+    container_name: corporate_ai_rag
+    restart: unless-stopped
+    networks:
+      - frontend_net
+      - backend_net
+    volumes:
+      - rag_uploads:/app/uploads         # Documenti caricati persistenti
+      - ./rag_backend:/app               # Hot-reload in sviluppo
+    environment:
+      # LLM
+      - LLM_MODEL=${LLM_MODEL:-gemma2:9b}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.2}
+      - LLM_CONTEXT_WINDOW=${LLM_CONTEXT_WINDOW:-4096}
+      # Qdrant
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_PORT:-6333}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-changeme}
+      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME:-corporate_docs}
+      # RAG
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-200}
+      - TOP_K_RESULTS=${TOP_K_RESULTS:-5}
+      # Sistema
+      - DEPLOY_MODE=${DEPLOY_MODE:-gpu}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-Europe/Rome}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_started
+      qdrant:
+        condition: service_started   # distroless: nessun healthcheck disponibile
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    labels:
+      - "com.corporate-ai.service=rag-backend"
+      - "com.corporate-ai.description=Pipeline RAG FastAPI + LangChain"
+
+  # =========================================================================
+  # 5. OPEN WEBUI — Interfaccia chat moderna con supporto RAG
+  #    Immagine: ghcr.io/open-webui/open-webui (MIT)
+  #    Porta interna: 8080
+  # =========================================================================
+  open_webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: corporate_ai_webui
+    restart: unless-stopped
+    networks:
+      - frontend_net
+      - backend_net
+    volumes:
+      - webui_data:/app/backend/data
+    environment:
+      # Connessione Ollama
+      - OLLAMA_BASE_URL=http://ollama:11434
+      # Connessione al RAG Backend custom (tramite OpenAI-compatible API)
+      - OPENAI_API_BASE_URL=http://rag_backend:8000/v1
+      - OPENAI_API_KEY=not-required-local
+      # Sicurezza WebUI
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-changeme_secret}
+      - ENABLE_SIGNUP=${WEBUI_AUTH:-true}
+      - DEFAULT_USER_ROLE=${WEBUI_DEFAULT_USER_ROLE:-user}
+      # Disabilita telemetria
+      - SCARF_NO_ANALYTICS=true
+      - DO_NOT_TRACK=true
+      - ANONYMIZED_TELEMETRY=false
+      - TZ=${TZ:-Europe/Rome}
+    depends_on:
+      - ollama
+      - rag_backend
+    healthcheck:
+      # open-webui scarica modelli HF al primo avvio: può richiedere 5-15 minuti.
+      # Healthcheck disabilitato — Nginx parte con service_started e riprova
+      # autonomamente finché WebUI non risponde (proxy_connect_timeout in nginx.conf)
+      disable: true
+    labels:
+      - "com.corporate-ai.service=webui"
+      - "com.corporate-ai.description=Interfaccia utente chat"
+
+  # =========================================================================
+  # 7. DOCUMENT CONSOLE — Interfaccia di gestione documenti RAG
+  #    Immagine: node:20-alpine con `serve` (MIT)
+  #    Porta interna: 3000
+  #    Build: console/ → React app compilata
+  # =========================================================================
+  console:
+    build:
+      context: ./console
+      dockerfile: Dockerfile
+    container_name: corporate_ai_console
+    restart: unless-stopped
+    networks:
+      - frontend_net
+    environment:
+      - VITE_RAG_BASE_URL=/api/rag
+      - TZ=${TZ:-Europe/Rome}
+    depends_on:
+      rag_backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "com.corporate-ai.service=console"
+      - "com.corporate-ai.description=Document Management Console"
+
+  # =========================================================================
+  # 6. NGINX — Reverse Proxy con SSL/TLS
+  #    Espone: HTTPS :443 → WebUI | /api/* → RAG Backend
+  #    Immagine: nginx:alpine (BSD-like license, uso commerciale OK)
+  # =========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: corporate_ai_nginx
+    restart: unless-stopped
+    networks:
+      - frontend_net
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"      # HTTP → redirect HTTPS
+      - "${NGINX_HTTPS_PORT:-443}:443"   # HTTPS (SSL/TLS)
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro   # Certificati SSL (self-signed o Let's Encrypt)
+      - nginx_logs:/var/log/nginx
+    environment:
+      - TZ=${TZ:-Europe/Rome}
+    depends_on:
+      open_webui:
+        condition: service_started
+      rag_backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "com.corporate-ai.service=proxy"
+      - "com.corporate-ai.description=Reverse proxy SSL/TLS"

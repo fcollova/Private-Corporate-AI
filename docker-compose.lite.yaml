@@ -1,0 +1,168 @@
+# =============================================================================
+# PRIVATE CORPORATE AI — Override LITE (CPU-only)
+# =============================================================================
+# Questo file è un Docker Compose OVERRIDE da usare in AGGIUNTA al
+# docker-compose.yaml principale quando NON è disponibile una GPU NVIDIA.
+#
+# AVVIO MODALITÀ LITE:
+#   docker compose -f docker-compose.yaml -f docker-compose.lite.yaml \
+#     --env-file .env up -d
+#
+# STOP:
+#   docker compose -f docker-compose.yaml -f docker-compose.lite.yaml down
+#
+# COSA FA QUESTO FILE:
+#   1. Rimuove il blocco `deploy.resources.reservations` (GPU) da Ollama
+#   2. Imposta variabili d'ambiente ottimizzate per inferenza CPU
+#   3. Applica limiti di memoria per evitare OOM killer
+#   4. Riduce il parallelismo per non saturare la CPU
+#   5. Abilita il profilo di ottimizzazione AVX2/AVX512 di Ollama
+#
+# REQUISITI HARDWARE MINIMI (LITE):
+#   CPU: 4 core (consigliati 8+)
+#   RAM: 8 GB (consigliati 16+ GB)
+#   Storage: 50 GB liberi per modelli + dati
+#
+# MODELLI RACCOMANDATI PER LA MODALITÀ LITE:
+#   - phi3:mini                    → ~2.3 GB RAM, molto capace
+#   - gemma2:2b                    → ~1.6 GB RAM, buona qualità ITA
+#   - llama3.2:3b                  → ~2.0 GB RAM, bilanciato
+#   - mistral:7b-instruct-q4_K_M   → ~4.1 GB RAM, migliore qualità
+#   - qwen2.5:7b-instruct-q4_K_M   → ~4.4 GB RAM, top per ITA/ENG
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  # =========================================================================
+  # OLLAMA — Modalità CPU-only
+  # Override del servizio principale: rimuove GPU, ottimizza per CPU
+  # =========================================================================
+  ollama:
+    # Usa l'immagine base standard (non cuda-specific) per ridurre i download
+    image: ollama/ollama:latest
+    environment:
+      # Disabilita completamente l'uso della GPU
+      - CUDA_VISIBLE_DEVICES=""
+      - OLLAMA_NUM_GPU=0
+
+      # Ottimizzazione thread CPU
+      # 0 = automatico; sovrascrivibile tramite OLLAMA_CPU_THREADS nel .env
+      - OLLAMA_NUM_THREADS=${OLLAMA_CPU_THREADS:-0}
+
+      # Abilita le ottimizzazioni CPU avanzate di Ollama
+      # Ollama rileva automaticamente AVX, AVX2, AVX512, FMA
+      - OLLAMA_FLASH_ATTENTION=0
+
+      # Riduce il parallelismo per non saturare la CPU
+      - OLLAMA_NUM_PARALLEL=1
+
+      # Mantieni un solo modello in memoria (CPU ha meno RAM della VRAM)
+      - OLLAMA_MAX_LOADED_MODELS=1
+
+      # Keep-alive ridotto: libera RAM prima in modalità CPU
+      # (default GPU: 5m, LITE: 2m)
+      - OLLAMA_KEEP_ALIVE=2m
+
+    # Rimuove il blocco GPU — in modalità LITE non serve
+    # L'assenza del blocco `deploy` fa sì che Docker non cerchi runtime NVIDIA
+    deploy:
+      resources:
+        limits:
+          # Limita memoria per evitare OOM. Calcola:
+          # RAM_MODELLO + 2GB overhead = limite sicuro
+          # Es: phi3:mini (2.3GB) → 5g; mistral-q4 (4.1GB) → 7g
+          memory: 8g
+        reservations:
+          memory: 2g
+          # NESSUN blocco `devices` → nessuna GPU richiesta
+
+    # Healthcheck con timeout più lungo (avvio CPU è più lento)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 120s   # Più lungo: il primo avvio CPU può richiedere 2+ minuti
+
+  # =========================================================================
+  # OLLAMA INIT — Scarica modelli ottimizzati per CPU (quantizzati)
+  # =========================================================================
+  ollama_init:
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    # Messaggio informativo sulla modalità LITE
+    entrypoint: >
+      /bin/sh -c "
+        echo '========================================';
+        echo '  Private Corporate AI — Modalita LITE';
+        echo '  Inferenza CPU-only (no GPU richiesta)';
+        echo '========================================';
+        echo '';
+        echo '==> Download modello LLM: ${LLM_MODEL}';
+        echo '    Suggerimento: usa modelli q4_K_M per migliori performance CPU';
+        ollama pull ${LLM_MODEL};
+        echo '';
+        echo '==> Download modello Embedding: ${EMBEDDING_MODEL}';
+        ollama pull ${EMBEDDING_MODEL};
+        echo '';
+        echo '==> Modelli pronti per inferenza CPU!';
+        echo '    Attenzione: la prima risposta potrebbe richiedere 30-120 secondi.';
+      "
+
+  # =========================================================================
+  # RAG BACKEND — Parametri ottimizzati per modalità LITE
+  # =========================================================================
+  rag_backend:
+    environment:
+      # Segnala alla pipeline che siamo in modalità LITE
+      - DEPLOY_MODE=cpu
+
+      # Contesto ridotto per risparmiare RAM durante l'inferenza
+      - LLM_CONTEXT_WINDOW=${LLM_CONTEXT_WINDOW:-2048}
+
+      # Chunk più piccoli → query più veloci su CPU
+      - CHUNK_SIZE=${CHUNK_SIZE:-700}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-150}
+
+      # Meno chunk da elaborare → risposta più rapida
+      - TOP_K_RESULTS=${TOP_K_RESULTS:-3}
+
+      # Timeout più lungo per le risposte LLM su CPU
+      - REQUEST_TIMEOUT=300
+
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 512m
+
+  # =========================================================================
+  # QDRANT — Limiti memoria per sistemi con poca RAM
+  # =========================================================================
+  qdrant:
+    environment:
+      # Ottimizzazione memoria Qdrant per sistemi con RAM limitata
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEGMENT_SIZE_KB=200000
+      - QDRANT__SERVICE__MAX_REQUEST_SIZE_MB=256
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 256m
+
+  # =========================================================================
+  # OPEN WEBUI — Limiti memoria
+  # =========================================================================
+  open_webui:
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 256m
+
+  # console: nessun override necessario — CPU-only by design

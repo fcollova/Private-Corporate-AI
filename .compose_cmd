@@ -1,0 +1,8 @@
+docker
+compose
+-f
+docker-compose.yaml
+-f
+docker-compose.lite.yaml
+--env-file
+.env

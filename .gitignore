@@ -1,0 +1,43 @@
+# =============================================================================
+# PRIVATE CORPORATE AI — .gitignore
+# =============================================================================
+
+# File ambiente (CONTIENE PASSWORD — NON committare mai)
+.env
+.env.local
+
+# Certificati SSL (generati localmente)
+nginx/ssl/*.crt
+nginx/ssl/*.key
+nginx/ssl/*.pem
+
+# Documenti caricati (dati sensibili aziendali)
+rag_backend/uploads/
+docs_volume/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Log
+*.log
+nginx/logs/
+
+# Docker
+*.tar
