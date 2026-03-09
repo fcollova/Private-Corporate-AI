@@ -4,7 +4,9 @@
 
 Uno stack completo, production-ready e 100% open source per portare LLM e RAG (*Retrieval-Augmented Generation*) **dentro** la tua infrastruttura aziendale. Zero dati verso server esterni. Zero dipendenze da vendor cloud. Piena conformità GDPR.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**Autore:** Francesco Collovà
 [![Docker](https://img.shields.io/badge/Docker-Compose_v3.9-2496ED?logo=docker)](https://docs.docker.com/compose/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -26,7 +28,7 @@ Ogni prompt inviato a un servizio AI cloud attraversa reti esterne, viene loggat
 | `corporate_ai_nginx` | `nginx:alpine` | Reverse proxy SSL/TLS, rate limiting, security headers | BSD |
 | `corporate_ai_webui` | `ghcr.io/open-webui/open-webui` | Interfaccia chat web, gestione conversazioni | MIT |
 | `corporate_ai_console` | `node:20-alpine` | **Document Management Console** (React + Vite) | MIT |
-| `corporate_ai_rag` | *Custom build* | FastAPI + LangChain, pipeline RAG, API OpenAI-compatibile | MIT |
+| `corporate_ai_rag` | *Custom build* | FastAPI + LangChain, pipeline RAG, API OpenAI-compatibile | Apache 2.0 |
 | `corporate_ai_ollama` | `ollama/ollama` | Runtime LLM locale, supporto CPU e GPU NVIDIA | MIT |
 | `corporate_ai_qdrant` | `qdrant/qdrant` | Vector database, ricerca semantica per similarità coseno | Apache 2.0 |
 | `corporate_ai_ollama_init` | `ollama/ollama` | Init one-shot: scarica LLM e modello embedding al primo avvio | MIT |
@@ -165,7 +167,7 @@ CONSOLE_RAG_API_BASE=/api/rag
 
 ## Licenza
 
-Questo progetto è distribuito sotto licenza **MIT**. I componenti inclusi mantengono le proprie licenze originali (Ollama: MIT, Qdrant: Apache 2.0, Open WebUI: MIT).
+Questo progetto è distribuito sotto licenza **Apache 2.0**. I componenti inclusi mantengono le proprie licenze originali (Ollama: MIT, Qdrant: Apache 2.0, Open WebUI: MIT).
 
 ---
 

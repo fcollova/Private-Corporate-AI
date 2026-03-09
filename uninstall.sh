@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # PRIVATE CORPORATE AI — Script di Disinstallazione
+# Autore: Francesco Collovà
+# Licenza: Apache 2.0
 # Versione: 1.1.0
 # =============================================================================
 # Rimuove lo stack Docker e, opzionalmente, i dati e le configurazioni.

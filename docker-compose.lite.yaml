@@ -1,5 +1,7 @@
 # =============================================================================
 # PRIVATE CORPORATE AI — Override LITE (CPU-only)
+# Progetto: PRIVATE CORPORATE AI (Autore: Francesco Collovà)
+# Licenza: Apache 2.0 (Uso commerciale permesso)
 # =============================================================================
 # Questo file è un Docker Compose OVERRIDE da usare in AGGIUNTA al
 # docker-compose.yaml principale quando NON è disponibile una GPU NVIDIA.

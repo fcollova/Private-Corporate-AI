@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # PRIVATE CORPORATE AI — Installer Modalità FULL (GPU NVIDIA)
+# Autore: Francesco Collovà
+# Licenza: Apache 2.0
 # Versione: 1.1.0
 # =============================================================================
 # Script dedicato alla modalità FULL con GPU NVIDIA.

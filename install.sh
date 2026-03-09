@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # PRIVATE CORPORATE AI — Script di Installazione Principale
+# Autore: Francesco Collovà
+# Licenza: Apache 2.0
 # Versione: 1.1.0
 # Compatibilità: Ubuntu 22.04 LTS / 24.04 LTS (x86_64)
 # =============================================================================

@@ -1,7 +1,8 @@
 # =============================================================================
 # PRIVATE CORPORATE AI — Docker Compose v3.9
 # Stack: Ollama + Qdrant + RAG Backend (FastAPI) + Open WebUI + Nginx
-# Licenza componenti: Apache 2.0 / MIT (uso commerciale permesso)
+# Progetto: PRIVATE CORPORATE AI (Autore: Francesco Collovà)
+# Licenza: Apache 2.0 (Uso commerciale permesso)
 # =============================================================================
 #
 # MODALITA' DI AVVIO:

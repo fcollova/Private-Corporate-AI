@@ -2,7 +2,7 @@
 =============================================================================
 PRIVATE CORPORATE AI — RAG Backend
 =============================================================================
-Autore:     Senior Solutions Architect
+Autore:     Francesco Collovà
 Versione:   1.0.0
 Licenza:    Apache 2.0
 

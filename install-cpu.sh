@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # PRIVATE CORPORATE AI — Installer Modalità LITE (CPU-only)
+# Autore: Francesco Collovà
+# Licenza: Apache 2.0
 # Versione: 1.1.0
 # =============================================================================
 # Script dedicato alla modalità LITE, ottimizzata per server senza GPU NVIDIA.

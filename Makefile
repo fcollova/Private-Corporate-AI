@@ -1,5 +1,6 @@
 # =============================================================================
-# PRIVATE CORPORATE AI — Makefile
+# PRIVATE CORPORATE AI — Makefile (Autore: Francesco Collovà)
+# Licenza: Apache 2.0
 # Comandi rapidi per gestire lo stack in entrambe le modalità
 # =============================================================================
 # Uso: make <comando>
