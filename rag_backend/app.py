@@ -920,10 +920,17 @@ async def move_document_domain(doc_id: str, request: MoveDomainRequest):
         # 1. Verifica esistenza target
         await rag.ensure_collection_exists(target_collection)
         
-        # 2. Leggi tutti i punti dalla sorgente
+        # 2. Leggi tutti i punti dalla sorgente (cerca doc_id sia in root che in metadata)
+        filter_doc = Filter(
+            should=[
+                FieldCondition(key="doc_id", match=MatchValue(value=doc_id)),
+                FieldCondition(key="metadata.doc_id", match=MatchValue(value=doc_id)),
+            ]
+        )
+        
         points, _ = client.scroll(
             collection_name=source_collection,
-            scroll_filter=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]),
+            scroll_filter=filter_doc,
             limit=10000,
             with_payload=True,
             with_vectors=True,
@@ -964,10 +971,18 @@ async def reindex_document(doc_id: str, background_tasks: BackgroundTasks, colle
     try:
         client = rag.get_qdrant_client()
         
+        # Filtro robusto: cerca doc_id sia in root che in metadata (LangChain compat)
+        filter_doc = Filter(
+            should=[
+                FieldCondition(key="doc_id", match=MatchValue(value=doc_id)),
+                FieldCondition(key="metadata.doc_id", match=MatchValue(value=doc_id)),
+            ]
+        )
+
         # Trova filename originale
         points, _ = client.scroll(
             collection_name=target_collection,
-            scroll_filter=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]),
+            scroll_filter=filter_doc,
             limit=1,
             with_payload=True
         )
@@ -975,7 +990,10 @@ async def reindex_document(doc_id: str, background_tasks: BackgroundTasks, colle
         if not points:
             raise HTTPException(404, f"Documento {doc_id} non trovato")
             
-        filename = points[0].payload.get("filename")
+        payload = points[0].payload
+        meta = payload.get("metadata", payload)
+        filename = meta.get("filename")
+
         # Il file salvato ha il prefisso doc_id_
         safe_filename = f"{doc_id}_{filename}"
         file_path = os.path.join(settings.upload_dir, safe_filename)
@@ -983,10 +1001,10 @@ async def reindex_document(doc_id: str, background_tasks: BackgroundTasks, colle
         if not os.path.exists(file_path):
             raise HTTPException(410, f"File fisico {filename} non più presente sul server")
             
-        # Elimina punti esistenti
+        # Elimina punti esistenti (usa lo stesso filtro)
         client.delete(
             collection_name=target_collection,
-            points_selector=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))])
+            points_selector=filter_doc
         )
         
         # Avvia re-indicizzazione
@@ -1088,13 +1106,19 @@ async def delete_document(doc_id: str, collection_name: Optional[str] = None):
     try:
         client = rag.get_qdrant_client()
 
-        # Cerca tutti i chunk con questo doc_id
+        # Filtro robusto: cerca doc_id sia in root che in metadata (LangChain compat)
+        filter_doc = Filter(
+            should=[
+                FieldCondition(key="doc_id", match=MatchValue(value=doc_id)),
+                FieldCondition(key="metadata.doc_id", match=MatchValue(value=doc_id)),
+            ]
+        )
+
+        # Verifica se il documento esiste prima di eliminarlo (per ritornare 404)
         points, _ = client.scroll(
             collection_name=target_collection,
-            scroll_filter={
-                "must": [{"key": "doc_id", "match": {"value": doc_id}}]
-            },
-            limit=10000,
+            scroll_filter=filter_doc,
+            limit=1,
             with_payload=False,
             with_vectors=False,
         )
@@ -1105,18 +1129,18 @@ async def delete_document(doc_id: str, collection_name: Optional[str] = None):
                 detail=f"Documento '{doc_id}' non trovato nella collezione '{target_collection}'"
             )
 
-        point_ids = [p.id for p in points]
+        # Elimina tutti i chunk (punti) associati al documento
+        # L'uso diretto di Filter come points_selector è atomico e non ha limiti di chunk
         client.delete(
             collection_name=target_collection,
-            points_selector=PointIdsList(points=point_ids),
+            points_selector=filter_doc,
         )
 
-        logger.info(f"Documento {doc_id} rimosso: {len(point_ids)} chunk eliminati")
+        logger.info(f"Documento {doc_id} rimosso con successo dalla collezione {target_collection}")
 
         return {
             "message":       f"Documento rimosso con successo",
             "doc_id":        doc_id,
-            "chunks_deleted": len(point_ids),
             "collection":    target_collection,
         }
 
