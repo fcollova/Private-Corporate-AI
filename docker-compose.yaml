@@ -157,7 +157,7 @@ services:
       - backend_net
     volumes:
       - rag_uploads:/app/uploads         # Documenti caricati persistenti
-      - ./rag_backend:/app               # Hot-reload in sviluppo
+      - ./rag_backend:/app               # Hot-reload in sviluppo (include main.py, etc)
     environment:
       # LLM
       - LLM_MODEL=${LLM_MODEL:-gemma2:9b}

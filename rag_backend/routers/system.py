@@ -1,0 +1,53 @@
+import httpx
+from fastapi import APIRouter
+from starlette.responses import Response
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+
+from config import settings
+from schemas import HealthResponse
+from core import rag
+
+router = APIRouter(tags=["Sistema"])
+
+@router.get("/health", response_model=HealthResponse)
+async def health_check():
+    ollama_ok, qdrant_ok = False, False
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{settings.ollama_base_url}/api/version")
+            ollama_ok = resp.status_code == 200
+    except: pass
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"http://{settings.qdrant_host}:{settings.qdrant_port}/healthz")
+            qdrant_ok = resp.status_code == 200
+    except: pass
+    
+    return HealthResponse(
+        status="healthy" if ollama_ok and qdrant_ok else "degraded",
+        deploy_mode=settings.deploy_mode,
+        ollama_connected=ollama_ok,
+        qdrant_connected=qdrant_ok,
+        model_loaded=settings.llm_model,
+        embedding_model=settings.embedding_model,
+        collection_name=settings.qdrant_collection_name,
+        timeout_seconds=settings.effective_timeout,
+    )
+
+@router.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+@router.get("/client/info")
+async def get_client_info():
+    return {
+        "company": settings.client_company,
+        "theme_color": settings.client_theme_color,
+    }
+
+@router.get("/models/available")
+async def list_available_models():
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{settings.ollama_base_url}/api/tags")
+        data = resp.json()
+    return {"models": data.get("models", []), "current": settings.llm_model}
