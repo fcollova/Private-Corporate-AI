@@ -1,0 +1,8 @@
+  ╔═══════════════════════════════════════════════════════════╗
+  ║                                                           ║
+  ║         PRIVATE CORPORATE AI  —  Azienda S.r.l.
+  ║         Stack Self-Hosted · Generale
+  ║                                                           ║
+  ║   Ollama  •  Qdrant  •  FastAPI  •  Open WebUI  •  Nginx  ║
+  ║                                                           ║
+  ╚═══════════════════════════════════════════════════════════╝

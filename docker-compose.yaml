@@ -178,13 +178,25 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-Europe/Rome}
       - OLLAMA_BASE_URL=http://ollama:11434
+      # Profilo Cliente
+      - CLIENT_COMPANY=${CLIENT_COMPANY:-Azienda S.r.l.}
+      - CLIENT_SLUG=${CLIENT_SLUG:-azienda}
+      - CLIENT_INDUSTRY=${CLIENT_INDUSTRY:-Generale}
+      - CLIENT_CONTACT=${CLIENT_CONTACT:-Amministratore}
+      - CLIENT_EMAIL=${CLIENT_EMAIL:-admin@azienda.local}
+      - CLIENT_DOMAIN=${CLIENT_DOMAIN:-localhost}
+      - CLIENT_LANGUAGE=${CLIENT_LANGUAGE:-italiano}
+      - CLIENT_LANG_CODE=${CLIENT_LANG_CODE:-it}
+      - CLIENT_THEME_COLOR=${CLIENT_THEME_COLOR:-#1A3A5C}
+      - CLIENT_THEME_NAME=${CLIENT_THEME_NAME:-blue}
+      - CLIENT_DOMAINS=${CLIENT_DOMAINS:-corporate_docs}
     depends_on:
       ollama:
         condition: service_started
       qdrant:
         condition: service_started   # distroless: nessun healthcheck disponibile
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -217,6 +229,8 @@ services:
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-changeme_secret}
       - ENABLE_SIGNUP=${WEBUI_AUTH:-true}
       - DEFAULT_USER_ROLE=${WEBUI_DEFAULT_USER_ROLE:-user}
+      - WEBUI_NAME=${WEBUI_NAME:-Private Corporate AI}
+      - WEBUI_CUSTOM_CSS=${WEBUI_CUSTOM_CSS:-}
       # Disabilita telemetria
       - SCARF_NO_ANALYTICS=true
       - DO_NOT_TRACK=true

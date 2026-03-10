@@ -118,6 +118,19 @@ class Settings(BaseSettings):
     upload_dir: str = Field(default="/app/uploads")
     log_level: str = Field(default="INFO")
 
+    # Profilo Cliente
+    client_company: str = Field(default="Azienda S.r.l.")
+    client_slug: str = Field(default="azienda")
+    client_industry: str = Field(default="Generale")
+    client_contact: str = Field(default="Amministratore")
+    client_email: str = Field(default="admin@azienda.local")
+    client_domain: str = Field(default="localhost")
+    client_language: str = Field(default="italiano")
+    client_lang_code: str = Field(default="it")
+    client_theme_color: str = Field(default="#1A3A5C")
+    client_theme_name: str = Field(default="blue")
+    client_domains: str = Field(default="corporate_docs")
+
     @property
     def is_cpu_mode(self) -> bool:
         """True se siamo in modalita' LITE (inferenza CPU-only)."""
@@ -129,8 +142,9 @@ class Settings(BaseSettings):
         return self.request_timeout if not self.is_cpu_mode else max(self.request_timeout, 300)
 
     class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+        # Carichiamo solo da environment vars passate da Docker
+        # Evitiamo di cercare il file .env per problemi di permessi nel container
+        extra = "ignore"
 
 
 # Istanza globale settings
@@ -379,24 +393,33 @@ rag = RagComponents()
 def build_rag_prompt() -> PromptTemplate:
     """
     Costruisce il prompt template per la pipeline RAG.
-    Il prompt istruisce il modello a rispondere SOLO con il contesto fornito,
-    garantendo risposte ancorate ai documenti aziendali.
+    Se esiste /app/system_prompt.txt (generato da install.sh durante il
+    setup cliente), lo usa come system prompt personalizzato.
     """
-    template = """Sei un assistente aziendale esperto e preciso. Rispondi alla domanda 
-dell'utente basandoti ESCLUSIVAMENTE sul contesto documentale fornito di seguito.
+    system_prompt_path = Path("/app/system_prompt.txt")
+    if system_prompt_path.exists():
+        client_system = system_prompt_path.read_text(encoding="utf-8").strip()
+        logger.info("System prompt personalizzato caricato da system_prompt.txt")
+    else:
+        client_system = (
+            "Sei un assistente aziendale esperto e preciso. Rispondi alla domanda "
+            "dell'utente basandoti ESCLUSIVAMENTE sul contesto documentale fornito di seguito."
+        )
+
+    template = f"""{client_system}
 
 REGOLE FONDAMENTALI:
 1. Rispondi SOLO con informazioni presenti nel contesto. Non inventare.
 2. Se l'informazione non è nel contesto, dillo esplicitamente.
 3. Cita la fonte (nome file) quando possibile.
-4. Rispondi in italiano, in modo chiaro e professionale.
+4. Rispondi in modo chiaro e professionale.
 5. Struttura la risposta in modo logico, usa elenchi se utile.
 
 --- CONTESTO DOCUMENTALE ---
-{context}
+{{context}}
 --- FINE CONTESTO ---
 
-DOMANDA: {question}
+DOMANDA: {{question}}
 
 RISPOSTA:"""
 
@@ -404,7 +427,6 @@ RISPOSTA:"""
         template=template,
         input_variables=["context", "question"]
     )
-
 
 def get_document_loader(file_path: str, file_ext: str):
     """
@@ -727,6 +749,21 @@ async def health_check():
 async def metrics():
     """Espone metriche in formato Prometheus per monitoring esterno."""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/api/client/info", tags=["Sistema"])
+async def get_client_info():
+    """Restituisce le informazioni di personalizzazione del cliente."""
+    return {
+        "company": settings.client_company,
+        "slug": settings.client_slug,
+        "industry": settings.client_industry,
+        "domain": settings.client_domain,
+        "language": settings.client_language,
+        "lang_code": settings.client_lang_code,
+        "theme_color": settings.client_theme_color,
+        "theme_name": settings.client_theme_name,
+    }
 
 
 # =============================================================================

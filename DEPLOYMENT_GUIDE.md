@@ -20,7 +20,8 @@
 12. [Monitoring](#12-monitoring)
 13. [Sicurezza in Produzione](#13-sicurezza-in-produzione)
 14. [Document Console](#14-document-console)
-15. [Troubleshooting](#15-troubleshooting)
+15. [Personalizzazione Cliente](#15-personalizzazione-cliente)
+16. [Troubleshooting](#16-troubleshooting)
 
 ---
 
@@ -352,7 +353,43 @@ Utile se viene cambiato il modello di embedding (`EMBEDDING_MODEL` nel `.env`). 
 
 ---
 
-## 15. Troubleshooting
+## 15. Personalizzazione Cliente
+
+Lo script `install.sh` include una fase di **Personalizzazione Cliente** (`collect_client_profile()`) che permette di adattare lo stack all'identità e alle esigenze specifiche del cliente finale durante il primo setup.
+
+### Artefatti Generati
+Il processo di setup crea i seguenti file nella directory `branding/` e `rag_backend/`:
+
+*   `branding/client.json`: Registro tecnico dell'installazione (azienda, contatti, moduli attivi).
+*   `branding/banner.txt`: Banner ASCII personalizzato che compare ad ogni avvio dell'installer.
+*   `branding/theme.css`: CSS personalizzato applicato a Open WebUI per riflettere i colori aziendali.
+*   `rag_backend/system_prompt.txt`: Il prompt di sistema che definisce il comportamento dell'AI (es. "Sei l'assistente di Azienda S.r.l.").
+
+### Operazioni Post-Installazione
+
+#### Modificare il System Prompt
+Se desideri affinare il comportamento del modello dopo l'installazione:
+1. Modifica il file `rag_backend/system_prompt.txt`.
+2. Riavvia il backend: `make rebuild-rag` (o `make restart-lite`).
+3. Oppure usa il comando rapido: `make edit-system-prompt`.
+
+#### Riconfigurare il Profilo Cliente
+Per cambiare nome azienda, email di riferimento o tema colori senza reinstallare lo stack Docker:
+```bash
+sudo ./install.sh --reconfigure-client
+# Oppure via Makefile:
+make reconfigure-client
+```
+
+#### Esportare la Configurazione
+Per creare un pacchetto di backup della sola personalizzazione cliente (utile per replicare il setup su un server di disaster recovery):
+```bash
+make export-client-config
+```
+
+---
+
+## 16. Troubleshooting
 
 ### Modalità LITE — Problemi comuni
 

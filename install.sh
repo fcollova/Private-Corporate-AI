@@ -84,7 +84,14 @@ spinner() {
 show_banner() {
     clear
     echo -e "${BOLD}${BLUE}"
-    cat << 'EOF'
+
+    # Se esiste un banner personalizzato (installazione già configurata),
+    # mostralo al posto di quello generico
+    local custom_banner="${SCRIPT_DIR}/branding/banner.txt"
+    if [[ -f "${custom_banner}" ]]; then
+        cat "${custom_banner}"
+    else
+        cat << 'EOF'
   ╔═══════════════════════════════════════════════════════════╗
   ║                                                           ║
   ║         PRIVATE CORPORATE AI  —  Installazione           ║
@@ -94,10 +101,21 @@ show_banner() {
   ║                                                           ║
   ╚═══════════════════════════════════════════════════════════╝
 EOF
+    fi
+
     echo -e "${NC}"
     log_info "Versione script: ${SCRIPT_VERSION}"
     log_info "Directory progetto: ${SCRIPT_DIR}"
     log_info "Log: ${LOG_FILE}"
+
+    # Se client.json esiste, mostra il cliente configurato
+    local client_json="${SCRIPT_DIR}/branding/client.json"
+    if [[ -f "${client_json}" ]]; then
+        local company; company=$(python3 -c "import json; d=json.load(open('${client_json}')); print(d.get('company',''))" 2>/dev/null)
+        local installed; installed=$(python3 -c "import json; d=json.load(open('${client_json}')); print(d.get('installed_at',''))" 2>/dev/null)
+        [[ -n "${company}" ]] && log_info "Cliente configurato: ${company} (installato: ${installed})"
+    fi
+
     echo ""
 }
 
@@ -112,6 +130,7 @@ ${BOLD}UTILIZZO:${NC}
 ${BOLD}OPZIONI:${NC}
     --gpu         Installa in modalità FULL (GPU NVIDIA richiesta)
     --cpu         Installa in modalità LITE (CPU-only, nessuna GPU)
+    --reconfigure-client Aggiorna branding, system prompt e domini senza reinstallare
     --uninstall   Rimuove lo stack e i volumi Docker
     --help        Mostra questo messaggio
 
@@ -723,41 +742,63 @@ generate_env_file() {
 # =============================================================================
 
 # Modalità deploy
-DEPLOY_MODE=${DEPLOY_MODE}
+DEPLOY_MODE='${DEPLOY_MODE}'
 
 # LLM
-LLM_MODEL=${LLM_MODEL}
-EMBEDDING_MODEL=${EMBEDDING_MODEL}
-LLM_TEMPERATURE=${LLM_TEMPERATURE}
-LLM_CONTEXT_WINDOW=${LLM_CONTEXT_WINDOW}
-OLLAMA_CPU_THREADS=${OLLAMA_CPU_THREADS}
-OLLAMA_NUM_GPU_LAYERS=0
+LLM_MODEL='${LLM_MODEL}'
+EMBEDDING_MODEL='${EMBEDDING_MODEL}'
+LLM_TEMPERATURE='${LLM_TEMPERATURE}'
+LLM_CONTEXT_WINDOW='${LLM_CONTEXT_WINDOW}'
+OLLAMA_CPU_THREADS='${OLLAMA_CPU_THREADS}'
+OLLAMA_NUM_GPU_LAYERS='0'
 
 # Qdrant
-QDRANT_HOST=qdrant
-QDRANT_PORT=6333
-QDRANT_COLLECTION_NAME=corporate_docs
-QDRANT_API_KEY=${QDRANT_API_KEY}
+QDRANT_HOST='qdrant'
+QDRANT_PORT='6333'
+QDRANT_COLLECTION_NAME='corporate_docs'
+QDRANT_API_KEY='${QDRANT_API_KEY}'
 
 # RAG Pipeline
-CHUNK_SIZE=${CHUNK_SIZE}
-CHUNK_OVERLAP=${CHUNK_OVERLAP}
-TOP_K_RESULTS=${TOP_K_RESULTS}
+CHUNK_SIZE='${CHUNK_SIZE}'
+CHUNK_OVERLAP='${CHUNK_OVERLAP}'
+TOP_K_RESULTS='${TOP_K_RESULTS}'
 
 # Open WebUI
-WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
-WEBUI_AUTH=${WEBUI_AUTH}
-WEBUI_DEFAULT_USER_ROLE=user
+WEBUI_SECRET_KEY='${WEBUI_SECRET_KEY}'
+WEBUI_AUTH='${WEBUI_AUTH}'
+WEBUI_DEFAULT_USER_ROLE='user'
 
 # Nginx
-NGINX_HOST=${NGINX_HOST}
-NGINX_HTTP_PORT=${NGINX_HTTP_PORT}
-NGINX_HTTPS_PORT=${NGINX_HTTPS_PORT}
+NGINX_HOST='${NGINX_HOST}'
+NGINX_HTTP_PORT='${NGINX_HTTP_PORT}'
+NGINX_HTTPS_PORT='${NGINX_HTTPS_PORT}'
 
 # Generale
-TZ=Europe/Rome
-LOG_LEVEL=INFO
-UPLOAD_DIR=/app/uploads
+TZ='Europe/Rome'
+LOG_LEVEL='INFO'
+UPLOAD_DIR='/app/uploads'
+
+# =============================================================================
+# PROFILO CLIENTE — Generato da install.sh
+# =============================================================================
+CLIENT_COMPANY='${CLIENT_COMPANY}'
+CLIENT_SLUG='${CLIENT_SLUG}'
+CLIENT_INDUSTRY='${CLIENT_INDUSTRY}'
+CLIENT_CONTACT='${CLIENT_CONTACT}'
+CLIENT_EMAIL='${CLIENT_EMAIL}'
+CLIENT_DOMAIN='${CLIENT_DOMAIN}'
+CLIENT_LANGUAGE='${CLIENT_LANGUAGE}'
+CLIENT_LANG_CODE='${CLIENT_LANG_CODE}'
+CLIENT_THEME_COLOR='${CLIENT_THEME_COLOR}'
+CLIENT_THEME_NAME='${CLIENT_THEME_NAME}'
+CLIENT_DOMAINS='$(echo "${CLIENT_DOMAINS}" | tr ' ' ',')'
+
+# Open WebUI — titolo personalizzato
+WEBUI_NAME='${CLIENT_COMPANY} AI'
+WEBUI_FAVICON_URL=''
+
+# RAG Backend — lingua preferenziale per il prompt
+RAG_RESPONSE_LANGUAGE='${CLIENT_LANGUAGE}'
 ENVEOF
 
     chmod 600 "${ENV_FILE}"
@@ -972,6 +1013,20 @@ show_summary() {
     echo -e "  │  Top-K chunks:   ${TOP_K_RESULTS}"
     echo -e "  └─────────────────────────────────────────────┘"
     echo -e ""
+    echo -e "${BOLD}  🏢 Profilo Cliente:${NC}"
+    echo -e "  ┌─────────────────────────────────────────────┐"
+    echo -e "  │  Azienda:        ${BOLD}${CLIENT_COMPANY}${NC}"
+    echo -e "  │  Settore:        ${CLIENT_INDUSTRY}"
+    echo -e "  │  Lingua RAG:     ${CLIENT_LANGUAGE}"
+    echo -e "  │  Dominio server: ${CLIENT_DOMAIN}"
+    echo -e "  │  Referente:      ${CLIENT_CONTACT} (${CLIENT_EMAIL})"
+    echo -e "  │  Tema UI:        ${CLIENT_THEME_COLOR}"
+    echo -e "  │  Domini RAG:     $(echo "${CLIENT_DOMAINS}" | tr ' ' ', ')"
+    echo -e "  └─────────────────────────────────────────────┘"
+    echo -e ""
+    echo -e "  ${DIM}Registro installazione: ${SCRIPT_DIR}/branding/client.json${NC}"
+    echo -e "  ${DIM}System prompt: ${SCRIPT_DIR}/rag_backend/system_prompt.txt${NC}"
+    echo -e ""
     echo -e "${BOLD}  🌐 Accesso:${NC}"
     echo -e "  │  Open WebUI:    ${CYAN}https://${server_ip}${NC}"
     echo -e "  │  API Swagger:   ${CYAN}https://${server_ip}/rag-docs${NC}"
@@ -1054,22 +1109,279 @@ uninstall() {
 
 # ── Gestione Argomenti CLI ────────────────────────────────────────────────────
 FORCED_MODE=""
+RECONFIGURE_CLIENT_ONLY=false
 
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --gpu)      FORCED_MODE="gpu" ;;
             --cpu)      FORCED_MODE="cpu" ;;
+            --reconfigure-client) RECONFIGURE_CLIENT_ONLY=true ;;
             --uninstall) uninstall; exit 0 ;;
             --help|-h)  show_help; exit 0 ;;
             *)
-                log_error "Argomento non riconosciuto: $1"
+                echo "Argomento non riconosciuto: $1"
                 show_help
                 exit 1
                 ;;
         esac
         shift
     done
+}
+
+# ── Raccolta Profilo Cliente ──────────────────────────────────────────────────
+collect_client_profile() {
+    log_section "Personalizzazione Cliente"
+
+    echo -e "  ${BOLD}Questi dati personalizzano l'installazione per il cliente finale.${NC}"
+    echo -e "  ${DIM}Lascia vuoto per usare il valore di default mostrato tra [].${NC}"
+    echo ""
+
+    # ── Identificazione ───────────────────────────────────────────────────────
+    echo -ne "  Nome azienda cliente [Azienda S.r.l.]: "
+    read -r v; CLIENT_COMPANY="${v:-Azienda S.r.l.}"
+
+    echo -ne "  Nome breve / sigla (es: ACME, max 12 caratteri) [${CLIENT_COMPANY:0:12}]: "
+    read -r v; CLIENT_SLUG="${v:-${CLIENT_COMPANY:0:12}}"
+    CLIENT_SLUG=$(echo "${CLIENT_SLUG}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | tr -s '-' | sed 's/^-//;s/-$//')
+
+    echo -ne "  Settore / industria (es: Legale, Healthcare, Manifatturiero) [Generale]: "
+    read -r v; CLIENT_INDUSTRY="${v:-Generale}"
+
+    echo -ne "  Referente tecnico (nome e cognome) [Amministratore]: "
+    read -r v; CLIENT_CONTACT="${v:-Amministratore}"
+
+    echo -ne "  Email referente tecnico [admin@${CLIENT_SLUG}.local]: "
+    read -r v; CLIENT_EMAIL="${v:-admin@${CLIENT_SLUG}.local}"
+
+    echo -ne "  Dominio o IP del server (es: ai.azienda.it oppure 192.168.1.10) [localhost]: "
+    read -r v; CLIENT_DOMAIN="${v:-localhost}"
+    # Aggiorna anche NGINX_HOST con il dominio cliente
+    NGINX_HOST="${CLIENT_DOMAIN}"
+
+    # ── Lingua e localizzazione ───────────────────────────────────────────────
+    echo ""
+    echo -e "  ${BOLD}Lingua principale dei documenti:${NC}"
+    echo -e "  1) Italiano  2) English  3) Misto ITA/ENG  4) Altra"
+    echo -ne "  Scelta [1]: "
+    read -r v
+    case "${v:-1}" in
+        1) CLIENT_LANGUAGE="italiano";  CLIENT_LANG_CODE="it" ;;
+        2) CLIENT_LANGUAGE="inglese";   CLIENT_LANG_CODE="en" ;;
+        3) CLIENT_LANGUAGE="misto";     CLIENT_LANG_CODE="it-en" ;;
+        4)
+            echo -ne "  Specifica la lingua: "
+            read -r CLIENT_LANGUAGE
+            CLIENT_LANG_CODE="${CLIENT_LANGUAGE:0:2}"
+            ;;
+        *) CLIENT_LANGUAGE="italiano";  CLIENT_LANG_CODE="it" ;;
+    esac
+
+    # ── Domini informativi ────────────────────────────────────────────────────
+    echo ""
+    echo -e "  ${BOLD}Domini informativi (collezioni Qdrant da pre-creare):${NC}"
+    echo -e "  ${DIM}Inserisci i nomi separati da virgola. Usa solo lettere, numeri e underscore.${NC}"
+    echo -e "  ${DIM}Esempio: contratti,risorse_umane,procedure_interne,normativa${NC}"
+    echo -ne "  Domini [corporate_docs]: "
+    read -r v
+    CLIENT_DOMAINS_RAW="${v:-corporate_docs}"
+    # Normalizza: trim, lowercase, sostituisce spazi e trattini con underscore
+    CLIENT_DOMAINS=$(echo "${CLIENT_DOMAINS_RAW}" | tr '[:upper:]' '[:lower:]' | tr ' -' '__' | tr ',' ' ' | tr -s ' ')
+
+    # ── Personalizzazione LLM ─────────────────────────────────────────────────
+    echo ""
+    echo -e "  ${BOLD}System prompt personalizzato per il modello LLM:${NC}"
+    echo -e "  ${DIM}Definisce il comportamento e il contesto del modello per questo cliente.${NC}"
+    echo -ne "  Vuoi personalizzarlo ora? [s/N]: "
+    read -r custom_prompt_choice
+
+    if [[ "${custom_prompt_choice}" =~ ^[sS]$ ]]; then
+        echo -e "  ${DIM}Inserisci il system prompt (termina con una riga contenente solo '.')${NC}"
+        echo -e "  ${DIM}Esempio: 'Sei un assistente AI per ${CLIENT_COMPANY}. Rispondi sempre in ${CLIENT_LANGUAGE}.'${NC}"
+        CLIENT_SYSTEM_PROMPT=""
+        while IFS= read -r line; do
+            [[ "${line}" == "." ]] && break
+            CLIENT_SYSTEM_PROMPT="${CLIENT_SYSTEM_PROMPT}${line}\n"
+        done
+    else
+        # System prompt di default localizzato
+        CLIENT_SYSTEM_PROMPT="Sei un assistente AI aziendale di ${CLIENT_COMPANY}.\n"
+        CLIENT_SYSTEM_PROMPT+="Rispondi sempre in ${CLIENT_LANGUAGE}.\n"
+        CLIENT_SYSTEM_PROMPT+="Usa esclusivamente le informazioni presenti nei documenti forniti.\n"
+        CLIENT_SYSTEM_PROMPT+="Se non trovi informazioni pertinenti, dichiaralo esplicitamente.\n"
+        CLIENT_SYSTEM_PROMPT+="Non fornire informazioni non verificate da documenti aziendali.\n"
+        CLIENT_SYSTEM_PROMPT+="Settore di riferimento: ${CLIENT_INDUSTRY}."
+    fi
+
+    # ── Tema colore interfaccia ───────────────────────────────────────────────
+    echo ""
+    echo -e "  ${BOLD}Tema colore interfaccia (Open WebUI + Console):${NC}"
+    echo -e "  1) Blu aziendale  ${DIM}#1A3A5C${NC}"
+    echo -e "  2) Verde          ${DIM}#2D6A4F${NC}"
+    echo -e "  3) Grigio tecnico ${DIM}#3D4451${NC}"
+    echo -e "  4) Rosso/bordeaux ${DIM}#7B2D2D${NC}"
+    echo -e "  5) Personalizzato ${DIM}#RRGGBB${NC}"
+    echo -ne "  Scelta [1]: "
+    read -r v
+    case "${v:-1}" in
+        1) CLIENT_THEME_COLOR="#1A3A5C"; CLIENT_THEME_NAME="blue" ;;
+        2) CLIENT_THEME_COLOR="#2D6A4F"; CLIENT_THEME_NAME="green" ;;
+        3) CLIENT_THEME_COLOR="#3D4451"; CLIENT_THEME_NAME="gray" ;;
+        4) CLIENT_THEME_COLOR="#7B2D2D"; CLIENT_THEME_NAME="red" ;;
+        5)
+            echo -ne "  Colore esadecimale (es: #2C5F8A): "
+            read -r v
+            CLIENT_THEME_COLOR="${v:-#1A3A5C}"
+            CLIENT_THEME_NAME="custom"
+            ;;
+        *) CLIENT_THEME_COLOR="#1A3A5C"; CLIENT_THEME_NAME="blue" ;;
+    esac
+
+    log_ok "Profilo cliente raccolto: ${CLIENT_COMPANY} (${CLIENT_SLUG})"
+    log_info "  Settore: ${CLIENT_INDUSTRY}"
+    log_info "  Lingua: ${CLIENT_LANGUAGE}"
+    log_info "  Dominio server: ${CLIENT_DOMAIN}"
+    log_info "  Domini RAG: ${CLIENT_DOMAINS}"
+    log_info "  Tema: ${CLIENT_THEME_NAME} (${CLIENT_THEME_COLOR})"
+}
+
+# ── Applicazione Branding Cliente ─────────────────────────────────────────────
+apply_client_branding() {
+    log_step "Applicazione branding cliente: ${CLIENT_COMPANY}"
+
+    local brand_dir="${SCRIPT_DIR}/branding"
+    mkdir -p "${brand_dir}"
+
+    # ── 2a. System prompt RAG backend ─────────────────────────────────────────
+    # Il file viene letto da app.py come override del prompt di default.
+    printf "%b" "${CLIENT_SYSTEM_PROMPT}" > "${SCRIPT_DIR}/rag_backend/system_prompt.txt"
+    log_ok "System prompt scritto: rag_backend/system_prompt.txt"
+
+    # ── 2b. Branding CSS per Open WebUI ──────────────────────────────────────
+    # Open WebUI supporta CSS custom tramite variabile WEBUI_CUSTOM_CSS.
+    # Generiamo il CSS e lo passiamo nel .env come stringa inline (max 4KB).
+    local css_file="${brand_dir}/theme.css"
+    cat > "${css_file}" << CSSEOF
+/* Private Corporate AI — Tema ${CLIENT_COMPANY} */
+/* Generato automaticamente da install.sh */
+:root {
+  --primary-color:      ${CLIENT_THEME_COLOR};
+  --primary-color-dark: color-mix(in srgb, ${CLIENT_THEME_COLOR} 80%, black);
+  --sidebar-bg:         color-mix(in srgb, ${CLIENT_THEME_COLOR} 15%, #1a1a2e);
+}
+.sidebar-header::after, .nav-container::before {
+  content: "${CLIENT_COMPANY}";
+  font-size: 0.7rem;
+  opacity: 0.6;
+  display: block;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding: 10px;
+  font-weight: bold;
+}
+CSSEOF
+    log_ok "CSS tema generato: branding/theme.css"
+
+    # ── 2c. File client.json — registro installazione ─────────────────────────
+    cat > "${brand_dir}/client.json" << JSONEOF
+{
+  "company":        "${CLIENT_COMPANY}",
+  "slug":           "${CLIENT_SLUG}",
+  "industry":       "${CLIENT_INDUSTRY}",
+  "contact":        "${CLIENT_CONTACT}",
+  "email":          "${CLIENT_EMAIL}",
+  "domain":         "${CLIENT_DOMAIN}",
+  "language":       "${CLIENT_LANGUAGE}",
+  "lang_code":      "${CLIENT_LANG_CODE}",
+  "theme_color":    "${CLIENT_THEME_COLOR}",
+  "theme_name":     "${CLIENT_THEME_NAME}",
+  "deploy_mode":    "${DEPLOY_MODE}",
+  "llm_model":      "${LLM_MODEL}",
+  "domains":        "$(echo "${CLIENT_DOMAINS}" | tr ' ' ',')",
+  "installed_at":   "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "installer_ver":  "${SCRIPT_VERSION}"
+}
+JSONEOF
+    log_ok "Registro installazione: branding/client.json"
+
+    # ── 2d. Banner personalizzato per sessioni future dell'installer ──────────
+    cat > "${brand_dir}/banner.txt" << BANNEREOF
+  ╔═══════════════════════════════════════════════════════════╗
+  ║                                                           ║
+  ║         PRIVATE CORPORATE AI  —  ${CLIENT_COMPANY}
+  ║         Stack Self-Hosted · ${CLIENT_INDUSTRY}
+  ║                                                           ║
+  ║   Ollama  •  Qdrant  •  FastAPI  •  Open WebUI  •  Nginx  ║
+  ║                                                           ║
+  ╚═══════════════════════════════════════════════════════════╝
+BANNEREOF
+    log_ok "Banner personalizzato: branding/banner.txt"
+
+    # ── 2e. Iniezione CSS in .env per Open WebUI ──────────────────────────────
+    local css_content
+    css_content=$(cat "${css_file}" | tr -d '\n')
+    if [[ -f "${ENV_FILE}" ]]; then
+        # Rimuovi eventuale riga esistente e aggiungi la nuova
+        grep -v "^WEBUI_CUSTOM_CSS=" "${ENV_FILE}" > "${ENV_FILE}.tmp" && mv "${ENV_FILE}.tmp" "${ENV_FILE}"
+        echo "WEBUI_CUSTOM_CSS='${css_content}'" >> "${ENV_FILE}"
+        log_ok "CSS branding iniettato in .env (WEBUI_CUSTOM_CSS)"
+    fi
+
+    log_ok "Branding applicato per: ${CLIENT_COMPANY}"
+}
+
+# ── Pre-creazione Domini Qdrant ───────────────────────────────────────────────
+precreate_qdrant_domains() {
+    if [[ -z "${CLIENT_DOMAINS:-}" ]]; then
+        return
+    fi
+
+    log_step "Pre-creazione domini informativi su Qdrant"
+
+    local retries=0
+    local max_retries=12
+
+    # Attendi che il RAG backend sia pronto
+    while [[ "${retries}" -lt "${max_retries}" ]]; do
+        if curl -sk "https://localhost/api/rag/health" | grep -q '"status"'; then
+            break
+        fi
+        (( retries++ ))
+        sleep 5
+    done
+
+    if [[ "${retries}" -ge "${max_retries}" ]]; then
+        log_warn "RAG backend non raggiungibile — skip pre-creazione domini"
+        log_warn "Puoi crearli manualmente dalla Document Console o via API"
+        return
+    fi
+
+    local created=0
+    local failed=0
+
+    for domain in ${CLIENT_DOMAINS}; do
+        domain=$(echo "${domain}" | tr -d ' ')
+        [[ -z "${domain}" ]] && continue
+
+        log_info "Creazione collezione Qdrant: ${domain}"
+        local response
+        response=$(curl -sk -X POST "https://localhost/api/rag/domains" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\": \"${domain}\"}" 2>/dev/null || echo "")
+
+        if echo "${response}" | grep -q '"created"'; then
+            log_ok "  ✓ ${domain}"
+            (( created++ ))
+        elif echo "${response}" | grep -q '409'; then
+            log_info "  ~ ${domain} (già esistente)"
+        else
+            log_warn "  ✗ ${domain} — risposta: ${response:0:80}"
+            (( failed++ ))
+        fi
+    done
+
+    log_ok "Domini Qdrant: ${created} creati, ${failed} errori"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -1122,10 +1434,66 @@ main() {
     show_banner
     parse_args "$@"
 
+    # Branch: solo riconfigurazione cliente (no reinstall stack)
+    if [[ "${RECONFIGURE_CLIENT_ONLY:-false}" == "true" ]]; then
+        # Carica le variabili esistenti dal .env in modo sicuro (senza source)
+        if [[ -f "${ENV_FILE}" ]]; then
+            # LLM & Mode
+            DEPLOY_MODE=$(grep "^DEPLOY_MODE=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            LLM_MODEL=$(grep "^LLM_MODEL=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            EMBEDDING_MODEL=$(grep "^EMBEDDING_MODEL=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            LLM_TEMPERATURE=$(grep "^LLM_TEMPERATURE=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            LLM_CONTEXT_WINDOW=$(grep "^LLM_CONTEXT_WINDOW=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            OLLAMA_CPU_THREADS=$(grep "^OLLAMA_CPU_THREADS=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            
+            # RAG
+            CHUNK_SIZE=$(grep "^CHUNK_SIZE=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            CHUNK_OVERLAP=$(grep "^CHUNK_OVERLAP=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            TOP_K_RESULTS=$(grep "^TOP_K_RESULTS=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            
+            # WebUI & Nginx
+            WEBUI_AUTH=$(grep "^WEBUI_AUTH=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            NGINX_HOST=$(grep "^NGINX_HOST=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            NGINX_HTTP_PORT=$(grep "^NGINX_HTTP_PORT=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            NGINX_HTTPS_PORT=$(grep "^NGINX_HTTPS_PORT=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+
+            # Ripristina variabili di contesto necessarie (default se mancanti)
+            DEPLOY_MODE="${DEPLOY_MODE:-cpu}"
+            LLM_MODEL="${LLM_MODEL:-gemma2:2b}"
+            EMBEDDING_MODEL="${EMBEDDING_MODEL:-nomic-embed-text}"
+            LLM_TEMPERATURE="${LLM_TEMPERATURE:-0.2}"
+            LLM_CONTEXT_WINDOW="${LLM_CONTEXT_WINDOW:-2048}"
+            OLLAMA_CPU_THREADS="${OLLAMA_CPU_THREADS:-0}"
+            CHUNK_SIZE="${CHUNK_SIZE:-1000}"
+            CHUNK_OVERLAP="${CHUNK_OVERLAP:-200}"
+            TOP_K_RESULTS="${TOP_K_RESULTS:-5}"
+            WEBUI_AUTH="${WEBUI_AUTH:-true}"
+            NGINX_HOST="${NGINX_HOST:-localhost}"
+            NGINX_HTTP_PORT="${NGINX_HTTP_PORT:-80}"
+            NGINX_HTTPS_PORT="${NGINX_HTTPS_PORT:-443}"
+        else
+            log_error "File .env non trovato. Impossibile riconfigurare senza installazione previa."
+            exit 1
+        fi
+        detect_hardware
+        collect_client_profile
+        generate_env_file          # Riscrive .env con nuovi dati cliente
+        apply_client_branding      # Rigenera artefatti branding
+        fix_ownership
+        # Riavvia solo rag_backend (ricarica system_prompt.txt)
+        cd "${SCRIPT_DIR}"
+        build_compose_cmd
+        "${COMPOSE_CMD[@]}" restart rag_backend
+        precreate_qdrant_domains || true
+        log_ok "Riconfigurazione cliente completata. Riavvia Open WebUI per applicare il tema."
+        exit 0
+    fi
+
     detect_hardware
     select_deploy_mode
     select_llm_model
     configure_advanced
+    collect_client_profile
     check_requirements
 
     # Riepilogo pre-installazione
@@ -1150,10 +1518,12 @@ main() {
     install_nvidia_toolkit
     generate_ssl_certs
     generate_env_file
+    apply_client_branding
     patch_compose_for_cpu   # <── rimuove blocco GPU se DEPLOY_MODE=cpu
     build_and_start
     fix_ownership      # <── restituisce .env e altri file all'utente reale
     wait_for_healthy
+    precreate_qdrant_domains
     show_summary
 }
 

@@ -100,42 +100,88 @@ Dopo l'avvio (attendere 2–5 minuti per il download dei modelli al primo avvio)
 
 ## Comandi principali (Makefile)
 
-### 🚀 Gestione Stack e Console
-| Comando | Descrizione |
-|---------|-------------|
-| `make up-gpu` | Avvia lo stack in modalità FULL (GPU NVIDIA richiesta) |
-| `make up-lite` | Avvia lo stack in modalità LITE (CPU-only) |
-| `make rebuild-console` | Ricompila e riavvia la Document Console (React) |
-| `make open-console` | Apre la console nel browser predefinito |
-| `make logs-console` | Mostra i log del container della console |
-| `make down` | Ferma tutti i servizi |
-| `make reload-nginx` | Ricarica la configurazione di Nginx |
+Lo stack viene gestito interamente tramite `make`. Di seguito l'elenco completo dei comandi suddivisi per categoria.
 
-### 📁 Documenti e RAG Avanzato
+### 🚀 Gestione Stack
 | Comando | Descrizione |
 |---------|-------------|
-| `make upload-doc FILE=...` | Carica e indicizza un file (es. `FILE=./doc.pdf`) |
-| `make list-docs` | Elenca i documenti presenti nell'indice vettoriale |
-| `make wipe-rag` | ⚠️ **Svuota completamente il RAG** (indice + file fisici) |
-| `make test-chat` | Invia una query di test al RAG via CLI |
-| `make health` | Esegue un controllo di salute su tutti i servizi |
+| `make install` | **Installazione interattiva** (rileva hardware, configura GPU o CPU) |
+| `make setup` | Setup rapido: crea `.env` e genera certificati SSL self-signed |
+| `make up-gpu` | Avvia in modalità **FULL (GPU NVIDIA)** |
+| `make up-lite` | Avvia in modalità **LITE (CPU-only)** |
+| `make restart-gpu` | Riavvio rapido in modalità FULL |
+| `make restart-lite` | Riavvio rapido in modalità LITE |
+| `make down` | Ferma tutti i servizi (modalità FULL) |
+| `make down-lite` | Ferma tutti i servizi (modalità LITE) |
+| `make build` | Ricostruisce l'immagine del RAG Backend |
+| `make rebuild-rag` | Ricrea e riavvia solo il RAG Backend (hot-fix) |
+| `make reload-nginx` | Verifica e ricarica la configurazione di Nginx |
+| `make clean` | ⚠️ **Rimuove tutto**: container, reti e **volumi dati** |
+
+### 📊 Log e Monitoring
+| Comando | Descrizione |
+|---------|-------------|
+| `make status` | Stato di salute e uptime di tutti i container |
+| `make logs` | Log combinati di tutti i servizi in tempo reale |
+| `make logs-rag` | Log specifici del RAG Backend (FastAPI) |
+| `make logs-init` | Monitora il download iniziale dei modelli |
+| `make logs-ollama` | Log del motore di inferenza LLM |
+| `make monitor` | **Dashboard risorse**: CPU, RAM e Rete in tempo reale |
+| `make gpu-monitor` | Monitoraggio VRAM e temperatura GPU (NVIDIA) |
+| `make logs-nginx` | Log del reverse proxy e traffico HTTP |
+| `make logs-webui` | Log dell'interfaccia chat Open WebUI |
 
 ### 🤖 Gestione Modelli LLM
 | Comando | Descrizione |
 |---------|-------------|
-| `make list-models` | Elenca tutti i modelli scaricati localmente |
-| `make pull-model MODEL=...` | Scarica un modello specifico (es. `MODEL=llama3`) |
-| `make active-model` | Mostra il modello attualmente in memoria |
+| `make list-models` | Elenca i modelli attualmente installati su Ollama |
+| `make active-model` | Mostra quale modello è attualmente caricato in RAM/VRAM |
+| `make pull-model MODEL=...` | Scarica un modello specifico (es. `MODEL=llama3:8b`) |
+| `make remove-model MODEL=...` | Rimuove un modello dal disco |
+| `make pull-models-lite` | Forza il download dei modelli ottimizzati per CPU |
+
+### 📁 Documenti e RAG (CLI)
+| Comando | Descrizione |
+|---------|-------------|
+| `make health` | Verifica la connettività tra RAG, Ollama e Qdrant |
+| `make upload-doc FILE=...` | Carica e indicizza un file (PDF, DOCX, TXT, MD) |
+| `make list-docs` | Elenca i documenti indicizzati nel database vettoriale |
+| `make test-chat` | Invia una domanda al RAG e ricevi la risposta con fonti |
+| `make wipe-rag` | ⚠️ **Svuota il RAG**: cancella tutti i vettori e i file caricati |
+| `make init-collection` | Inizializza manualmente la collezione Qdrant |
+
+### 💻 Document Management Console
+| Comando | Descrizione |
+|---------|-------------|
+| `make up-console` | Avvia specificamente il container della Console |
+| `make rebuild-console` | Ricompila da zero l'app React (Vite) |
+| `make logs-console` | Log del server di sviluppo/produzione console |
+| `make open-console` | Apre automaticamente l'URL della console nel browser |
+
+### 🏢 Personalizzazione e Cliente
+| Comando | Descrizione |
+|---------|-------------|
+| `make client-info` | Visualizza il profilo aziendale correntemente attivo |
+| `make reconfigure-client` | Rilancia il wizard per cambiare loghi e domini |
+| `make edit-system-prompt` | Apre l'editor per modificare le "istruzioni" dell'AI |
+| `make export-client-config` | Crea un pacchetto `.tar.gz` con tutta la personalizzazione |
+
+### 🛠️ Manutenzione e Sicurezza
+| Comando | Descrizione |
+|---------|-------------|
+| `make backup` | Crea un backup compresso di tutti i volumi Docker e `.env` |
+| `make uninstall` | Procedura guidata di rimozione sicura dello stack |
+| `make help` | Mostra la guida interattiva ai comandi |
 
 ---
 
 ## Document Management Console
 
-La nuova console React (`/console/`) permette una gestione granulare della knowledge base aziendale:
+La console React (`/console/`) permette una gestione avanzata della knowledge base aziendale:
 - **Domini Multipli:** Organizza i documenti in collezioni Qdrant separate (es. "Legal", "HR", "Technical").
 - **Monitoraggio:** Visualizza il numero di frammenti (chunk) estratti per ogni documento.
-- **Manutenzione:** Re-indicizzazione forzata (utile se cambi modello di embedding) e spostamento documenti tra domini.
-- **Branding:** Interfaccia professionale coerente con l'identità visiva del progetto.
+- **Manutenzione:** Re-indicizzazione forzata e spostamento documenti tra domini.
+- **Branding Dinamico:** L'interfaccia si adatta automaticamente al nome e ai colori del cliente configurati durante l'installazione.
 
 ---
 
@@ -162,6 +208,15 @@ Aggiunta sezione per la console:
 # URL base per le chiamate API dalla console verso il RAG backend
 CONSOLE_RAG_API_BASE=/api/rag
 ```
+
+## Roadmap Evolutiva
+
+Il progetto segue una roadmap mirata alla **Compliance (EU AI Act)** e alla **Connectivity Enterprise**:
+- **Phase 1:** Adeguamento normativo, disclaimer trasparenza e log retention.
+- **Phase 2:** Integrazione con SharePoint, Google Workspace e pipeline OCR.
+- **Phase 3:** Multi-tenancy avanzata, audit trail GDPR-compliant e versionamento documenti.
+
+Dettagli completi disponibili nel file [ROADMAP.md](./ROADMAP.md).
 
 ---
 

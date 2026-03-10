@@ -247,6 +247,35 @@ open-console:
 	@xdg-open https://localhost/console/ 2>/dev/null || echo "Apri: https://localhost/console/"
 
 # -----------------------------------------------------------------------------
+# GESTIONE CLIENTE
+# -----------------------------------------------------------------------------
+
+## Riconfigura branding, system prompt e domini senza reinstallare
+reconfigure-client:
+	sudo ./install.sh --reconfigure-client
+
+## Mostra il profilo cliente corrente
+client-info:
+	@if [ -f branding/client.json ]; then \
+		python3 -c "import json,sys; d=json.load(open('branding/client.json')); \
+		[print(f'  {k:<20} {v}') for k,v in d.items()]"; \
+	else \
+		echo "  Nessun profilo cliente configurato. Esegui: make reconfigure-client"; \
+	fi
+
+## Modifica il system prompt del modello LLM
+edit-system-prompt:
+	@${EDITOR:-nano} rag_backend/system_prompt.txt
+	$(COMPOSE_BASE) restart rag_backend
+	@echo "System prompt aggiornato e rag_backend riavviato"
+
+## Esporta configurazione cliente per backup o replica
+export-client-config:
+	@tar -czf client-config-$(shell date +%Y%m%d).tar.gz \
+		branding/ rag_backend/system_prompt.txt .env
+	@echo "Configurazione esportata: client-config-$(shell date +%Y%m%d).tar.gz"
+
+# -----------------------------------------------------------------------------
 # BACKUP
 # -----------------------------------------------------------------------------
 

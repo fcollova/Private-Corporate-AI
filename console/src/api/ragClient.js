@@ -15,4 +15,5 @@ export const api = {
 
   // Health
   health:       () => fetch(`${BASE}/health`).then(r => r.json()),
+  clientInfo:   () => fetch(`${BASE}/client/info`).then(r => r.json()),
 };

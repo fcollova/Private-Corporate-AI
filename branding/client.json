@@ -1,0 +1,17 @@
+{
+  "company":        "Azienda S.r.l.",
+  "slug":           "acme",
+  "industry":       "Generale",
+  "contact":        "Amministratore",
+  "email":          "admin@acme.local",
+  "domain":         "localhost",
+  "language":       "italiano",
+  "lang_code":      "it",
+  "theme_color":    "#1A3A5C",
+  "theme_name":     "blue",
+  "deploy_mode":    "cpu",
+  "llm_model":      "gemma2:2b",
+  "domains":        "corporate_docs",
+  "installed_at":   "2026-03-10T10:15:17Z",
+  "installer_ver":  "1.1.0"
+}

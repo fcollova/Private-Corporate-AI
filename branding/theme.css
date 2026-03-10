@@ -1,0 +1,18 @@
+/* Private Corporate AI — Tema Azienda S.r.l. */
+/* Generato automaticamente da install.sh */
+:root {
+  --primary-color:      #1A3A5C;
+  --primary-color-dark: color-mix(in srgb, #1A3A5C 80%, black);
+  --sidebar-bg:         color-mix(in srgb, #1A3A5C 15%, #1a1a2e);
+}
+.sidebar-header::after, .nav-container::before {
+  content: "Azienda S.r.l.";
+  font-size: 0.7rem;
+  opacity: 0.6;
+  display: block;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding: 10px;
+  font-weight: bold;
+}

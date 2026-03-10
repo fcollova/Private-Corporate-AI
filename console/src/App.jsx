@@ -8,14 +8,22 @@ const App = () => {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [clientInfo, setClientInfo] = useState({
+    company: 'Private Corporate AI',
+    theme_color: '#3b82f6'
+  });
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      const info = await api.clientInfo();
+      if (info && info.company) setClientInfo(info);
+      
       const doms = await api.listDomains();
-      setDomains(doms || []);
-      const documents = await api.listDocs(selectedDomain);
-      setDocs(documents.documents || []);
+      setDomains(Array.isArray(doms) ? doms : []);
+
+      const response = await api.listDocs(selectedDomain);
+      setDocs(Array.isArray(response?.documents) ? response.documents : []);
     } catch (e) { 
       console.error("Errore fetch dati:", e); 
     }
@@ -56,6 +64,9 @@ const App = () => {
     return '📁';
   };
 
+  const primaryColor = clientInfo?.theme_color || '#3b82f6';
+  const companyName = clientInfo?.company || 'Private Corporate AI';
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -75,13 +86,13 @@ const App = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ 
-            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            background: `linear-gradient(135deg, ${primaryColor} 0%, color-mix(in srgb, ${primaryColor}, black 20%) 100%)`,
             width: '40px', height: '40px', borderRadius: '8px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 'bold', fontSize: '20px'
-          }}>AI</div>
+          }}>{companyName.substring(0, 2).toUpperCase()}</div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Private Corporate AI</h1>
+            <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>{companyName}</h1>
             <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', letterSpacing: '0.05em' }}>DOCUMENT CONSOLE</p>
           </div>
         </div>
@@ -111,7 +122,7 @@ const App = () => {
             onClick={() => document.getElementById('upload').click()}
             disabled={uploading}
             style={{ 
-              background: '#3b82f6', border: 'none', color: 'white', 
+              background: primaryColor, border: 'none', color: 'white', 
               padding: '8px 16px', borderRadius: '6px', cursor: 'pointer',
               fontWeight: 600
             }}
@@ -131,7 +142,7 @@ const App = () => {
         }}>
           <h3 style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem' }}>Domini Disponibili</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {domains.map(d => (
+            {Array.isArray(domains) && domains.map(d => (
               <div 
                 key={d.name}
                 onClick={() => setSelectedDomain(d.name)}
@@ -139,9 +150,9 @@ const App = () => {
                   padding: '12px 16px',
                   borderRadius: '8px',
                   cursor: 'pointer',
-                  background: selectedDomain === d.name ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                  border: selectedDomain === d.name ? '1px solid #3b82f6' : '1px solid transparent',
-                  color: selectedDomain === d.name ? '#60a5fa' : '#94a3b8',
+                  background: selectedDomain === d.name ? `color-mix(in srgb, ${primaryColor}, transparent 90%)` : 'transparent',
+                  border: selectedDomain === d.name ? `1px solid ${primaryColor}` : '1px solid transparent',
+                  color: selectedDomain === d.name ? `color-mix(in srgb, ${primaryColor}, white 20%)` : '#94a3b8',
                   transition: 'all 0.2s'
                 }}
               >
@@ -155,7 +166,7 @@ const App = () => {
         {/* MAIN CONTENT - TABELLA DOCUMENTI */}
         <main style={{ padding: '2rem', background: '#020617' }}>
           <div style={{ marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Knowledge Base: <span style={{ color: '#3b82f6' }}>{selectedDomain}</span></h2>
+            <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Knowledge Base: <span style={{ color: primaryColor }}>{selectedDomain}</span></h2>
             <p style={{ color: '#64748b', margin: '4px 0 0 0' }}>Gestisci i documenti indicizzati in questo dominio informativo.</p>
           </div>
 
@@ -175,7 +186,7 @@ const App = () => {
                 </tr>
               </thead>
               <tbody>
-                {docs.length === 0 ? (
+                {!docs || docs.length === 0 ? (
                   <tr>
                     <td colSpan="3" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
                       Nessun documento trovato in questo dominio. Carica un file per iniziare.
