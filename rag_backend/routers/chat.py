@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: API endpoints for RAG chat and OpenAI compatibility layer.
+# =============================================================================
+
 import uuid
 import time
 import httpx

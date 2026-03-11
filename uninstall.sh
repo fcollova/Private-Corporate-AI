@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PRIVATE CORPORATE AI — Script di Disinstallazione
-# Autore: Francesco Collovà
-# Licenza: Apache 2.0
-# Versione: 1.1.0
-# =============================================================================
-# Rimuove lo stack Docker e, opzionalmente, i dati e le configurazioni.
-#
-# Utilizzo:
-#   sudo ./uninstall.sh           → Rimozione interattiva con scelta livello
-#   sudo ./uninstall.sh --all     → Rimozione completa (container + volumi + config)
-#   sudo ./uninstall.sh --soft    → Solo container (mantiene dati e config)
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Uninstallation script to remove the Docker stack, data, and configurations.
 # =============================================================================
 
 set -euo pipefail

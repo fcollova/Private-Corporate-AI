@@ -1,3 +1,11 @@
+/* =============================================================================
+   PROJECT: Private Corporate AI
+   AUTHOR: Francesco Collovà
+   LICENSE: Apache License 2.0
+   YEAR: 2026
+   DESCRIPTION: Main React application component for the Document Console.
+   ============================================================================= */
+
 import React, { useState, useEffect } from 'react';
 import { api } from './api/ragClient';
 

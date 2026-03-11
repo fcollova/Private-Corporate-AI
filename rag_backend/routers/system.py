@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: API endpoints for system health, metrics, and client information.
+# =============================================================================
+
 import httpx
 from fastapi import APIRouter
 from starlette.responses import Response

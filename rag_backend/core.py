@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Core RAG components initialization including LLM, Embeddings, and Vector Store.
+# =============================================================================
+
 from typing import Optional
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential

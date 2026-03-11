@@ -1,70 +1,53 @@
 # =============================================================================
-# PRIVATE CORPORATE AI — Dockerfile RAG Backend
-# Base: Python 3.11 slim (Debian Bookworm)
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Dockerfile for the RAG Backend (FastAPI application).
 # =============================================================================
 
-FROM python:3.11-slim-bookworm
+# Base: Python 3.11 slim (Debian Bookworm)
+FROM python:3.11-slim
 
-# Metadati immagine
-LABEL maintainer="Private Corporate AI"
-LABEL description="RAG Backend - FastAPI + LangChain + Qdrant"
-LABEL version="1.0.0"
+# Impostazioni ambientali
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV TZ=Europe/Rome
 
-# Variabili d'ambiente per Python
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Installa dipendenze di sistema necessarie per i document loaders
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Necessari per pypdf e unstructured
-    libmagic1 \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-ita \
-    tesseract-ocr-eng \
-    # Necessari per python-docx
-    libxml2-dev \
-    libxslt1-dev \
-    # Networking
-    curl \
-    # Cleanup
-    && rm -rf /var/lib/apt/lists/*
-
-# Crea utente non-root per sicurezza
-RUN groupadd --gid 1001 appgroup && \
-    useradd --uid 1001 --gid appgroup --shell /bin/bash --create-home appuser
-
-# Directory di lavoro
 WORKDIR /app
 
-# Copia e installa dipendenze Python (layer cacheable separato)
+# Dipendenze sistema (cacheable - cambiano raramente)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Definizione argomenti build (Sposta dopo le dipendenze sistema)
+ARG INSTALL_MODE=gpu
+
+# Copia solo requirements.txt per sfruttare la cache delle dipendenze
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
 
-# Crea directory per i file caricati
-RUN mkdir -p /app/uploads && chown appuser:appgroup /app/uploads
+# Installazione dipendenze Python con caching intelligente
+# 1. Se CPU, installa torch+cpu
+# 2. Poi installa tutto il resto
+RUN if [ "$INSTALL_MODE" = "cpu" ]; then \
+        echo ">>> Installazione PyTorch ottimizzata per CPU (LITE mode)..."; \
+        pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu; \
+    fi && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copia il codice applicativo
-COPY --chown=appuser:appgroup . .
+# Copia il resto del codice solo alla fine (così i cambi al codice non rifanno il pip install)
+COPY . .
 
-# Cambia all'utente non-root
-USER appuser
+# Directory upload
+RUN mkdir -p uploads
 
-# Health check interno
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
-
-# Porta esposta
 EXPOSE 8000
 
-# Avvio con Uvicorn (produzione: workers multipli)
-CMD ["uvicorn", "main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--workers", "2", \
-     "--log-level", "info", \
-     "--access-log"]
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/api/rag/health || exit 1
+
+# Avvio
+CMD ["python", "main.py"]

@@ -50,6 +50,8 @@ httpx==0.28.1                      # Client HTTP async (BSD)
 aiofiles==24.1.0                   # I/O asincrono file (Apache 2.0)
 python-dotenv==1.0.1               # Caricamento variabili .env (BSD)
 tenacity==9.0.0                    # Retry logic con backoff esponenziale (Apache 2.0)
+urllib3<2.0.0                      # Forza versione v1 per compatibilità con requests
+charset-normalizer<3.4.0           # Vincolo per stabilità dipendenze
 
 # -----------------------------------------------------------------------------
 # LOGGING & MONITORING

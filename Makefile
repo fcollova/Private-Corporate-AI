@@ -1,13 +1,9 @@
 # =============================================================================
-# PRIVATE CORPORATE AI — Makefile (Autore: Francesco Collovà)
-# Licenza: Apache 2.0
-# Comandi rapidi per gestire lo stack in entrambe le modalità
-# =============================================================================
-# Uso: make <comando>
-# Es:  make up-gpu     → avvia in modalità GPU
-#      make up-lite    → avvia in modalità LITE (CPU-only)
-#      make down       → ferma tutto
-#      make logs       → mostra log in tempo reale
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Makefile containing quick commands to manage the Docker stack in both GPU and CPU modes.
 # =============================================================================
 
 .PHONY: up-gpu up-lite down down-lite build restart-lite restart-gpu \
@@ -18,8 +14,8 @@
         health test-chat list-docs upload-doc init-collection list-rag-models \
         backup setup clean help install install-gpu install-cpu uninstall
 
-COMPOSE_BASE = docker compose --env-file .env
-COMPOSE_LITE = docker compose -f docker-compose.yaml -f docker-compose.lite.yaml --env-file .env
+COMPOSE_BASE = docker compose --env-file .env --env-file versions.env
+COMPOSE_LITE = docker compose -f docker-compose.yaml -f docker-compose.lite.yaml --env-file .env --env-file versions.env
 
 # -----------------------------------------------------------------------------
 # AVVIO / STOP

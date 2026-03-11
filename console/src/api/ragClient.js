@@ -1,3 +1,11 @@
+/* =============================================================================
+   PROJECT: Private Corporate AI
+   AUTHOR: Francesco Collovà
+   LICENSE: Apache License 2.0
+   YEAR: 2026
+   DESCRIPTION: API client for communicating with the RAG Backend.
+   ============================================================================= */
+
 const BASE = import.meta.env.VITE_RAG_BASE_URL || '/api/rag';
 
 export const api = {

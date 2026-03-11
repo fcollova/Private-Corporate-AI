@@ -1,24 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PRIVATE CORPORATE AI — Script di Installazione Principale
-# Autore: Francesco Collovà
-# Licenza: Apache 2.0
-# Versione: 1.1.0
-# Compatibilità: Ubuntu 22.04 LTS / 24.04 LTS (x86_64)
-# =============================================================================
-# Utilizzo:
-#   ./install.sh              → Installazione interattiva (sceglie GPU o CPU)
-#   ./install.sh --gpu        → Forza modalità FULL (GPU NVIDIA)
-#   ./install.sh --cpu        → Forza modalità LITE (CPU-only)
-#   ./install.sh --help       → Mostra questo messaggio
-#
-# Lo script gestisce TUTTO:
-#   1. Rilevamento hardware (GPU NVIDIA, RAM, CPU, AVX2)
-#   2. Installazione dipendenze di sistema (Docker, NVIDIA Toolkit)
-#   3. Configurazione automatica del file .env
-#   4. Generazione certificati SSL self-signed
-#   5. Build e avvio dello stack Docker
-#   6. Verifica post-installazione con healthcheck
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Main installation script that handles hardware detection, dependencies, and stack deployment.
 # =============================================================================
 
 set -euo pipefail
@@ -1342,7 +1328,7 @@ precreate_qdrant_domains() {
     local retries=0
     local max_retries=12
 
-    # Attendi che il RAG backend sia pronto
+    # Attendi che the RAG backend sia pronto
     while [[ "${retries}" -lt "${max_retries}" ]]; do
         if curl -sk "https://localhost/api/rag/health" | grep -q '"status"'; then
             break

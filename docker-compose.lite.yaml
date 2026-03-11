@@ -42,8 +42,8 @@ services:
   # Override del servizio principale: rimuove GPU, ottimizza per CPU
   # =========================================================================
   ollama:
-    # Usa l'immagine base standard (non cuda-specific) per ridurre i download
-    image: ollama/ollama:latest
+    # Usa l'immagine base specifica definita in versions.env
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
     environment:
       # Disabilita completamente l'uso della GPU
       - CUDA_VISIBLE_DEVICES=""
@@ -117,6 +117,11 @@ services:
   # RAG BACKEND — Parametri ottimizzati per modalità LITE
   # =========================================================================
   rag_backend:
+    build:
+      context: ./rag_backend
+      dockerfile: Dockerfile
+      args:
+        - INSTALL_MODE=cpu
     environment:
       # Segnala alla pipeline che siamo in modalità LITE
       - DEPLOY_MODE=cpu

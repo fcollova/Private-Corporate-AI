@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: API endpoints for document management (upload, list, delete, reindex).
+# =============================================================================
+
 import os
 import uuid
 from pathlib import Path

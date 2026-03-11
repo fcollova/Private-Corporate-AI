@@ -1,3 +1,11 @@
+/* =============================================================================
+   PROJECT: Private Corporate AI
+   AUTHOR: Francesco Collovà
+   LICENSE: Apache License 2.0
+   YEAR: 2026
+   DESCRIPTION: Vite configuration for the Document Console.
+   ============================================================================= */
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 

@@ -85,6 +85,52 @@ Ogni prompt inviato a un servizio AI cloud attraversa reti esterne, viene loggat
 
 ---
 
+## Prima Installazione
+
+L'installazione è completamente automatizzata tramite uno script interattivo che configura l'intero ambiente (Docker, modelli, database, certificati) in base all'hardware rilevato.
+
+### 1. Avvio dell'Installer
+Per iniziare, clona il repository ed esegui lo script principale con privilegi di root:
+```bash
+chmod +x install.sh
+sudo ./install.sh
+```
+*Lo script supporta anche flag per installazioni non interattive: `./install.sh --gpu` o `./install.sh --cpu`.*
+
+### 2. Passaggi della Procedura Guidata
+L'installer ti guiderà attraverso i seguenti step:
+1.  **Rilevamento Hardware:** Analisi automatica di CPU, RAM e GPU NVIDIA.
+2.  **Scelta Modalità:** Selezione tra **FULL (GPU)** per massime prestazioni o **LITE (CPU)** per server senza GPU.
+3.  **Selezione Modello LLM:** Scelta del modello ottimale (es. Gemma 2, Llama 3.1, DeepSeek-R1).
+4.  **Personalizzazione Cliente:** Inserimento del nome azienda e scelta del tema colore per il branding dell'interfaccia.
+5.  **Generazione Credenziali:** Creazione automatica di chiavi segrete univoche e certificati SSL self-signed.
+
+### 3. Monitoraggio dell'Installazione
+L'installazione richiede solitamente dai 5 ai 15 minuti, principalmente per il download dei modelli LLM (diversi GB).
+
+Puoi monitorare l'avanzamento con questi strumenti:
+*   **Log di installazione:** Il dettaglio completo è disponibile nel file `install.log`.
+*   **Download Modelli:** Per seguire il progresso dello scaricamento iniziale:
+    ```bash
+    make logs-init
+    ```
+*   **Risorse di Sistema:** Per monitorare il carico di CPU e RAM durante la build:
+    ```bash
+    make monitor
+    ```
+
+### 4. Verifica Finale
+Al termine, lo script mostrerà un riepilogo con gli URL di accesso. Per confermare che tutto sia operativo:
+
+1.  **Healthcheck API:** Esegui `make health`. Dovresti vedere lo stato `healthy` per Ollama, Qdrant e RAG.
+2.  **Accesso Web:** Naviga su `https://localhost`. Accetta l'avviso di sicurezza (per via del certificato self-signed) e verifica che appaia la schermata di login di Open WebUI.
+3.  **Test di Inferenza:** Verifica che il modello sia pronto a rispondere:
+    ```bash
+    make test-chat
+    ```
+
+---
+
 ## Accesso all'interfaccia
 
 Dopo l'avvio (attendere 2–5 minuti per il download dei modelli al primo avvio):

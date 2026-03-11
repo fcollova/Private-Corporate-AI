@@ -1,21 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PRIVATE CORPORATE AI — Installer Modalità FULL (GPU NVIDIA)
-# Autore: Francesco Collovà
-# Licenza: Apache 2.0
-# Versione: 1.1.0
-# =============================================================================
-# Script dedicato alla modalità FULL con GPU NVIDIA.
-# Esegue controlli hardware approfonditi e installa:
-#   - Driver NVIDIA (se non presenti)
-#   - NVIDIA Container Toolkit
-#   - Docker Engine + Compose Plugin
-#   - Stack completo con accelerazione GPU
-#
-# Utilizzo:
-#   sudo ./install-gpu.sh
-#   sudo ./install-gpu.sh --model gemma2:9b
-#   sudo ./install-gpu.sh --model deepseek-r1:14b --skip-driver-check
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Installer script for FULL mode with NVIDIA GPU acceleration.
 # =============================================================================
 
 set -euo pipefail

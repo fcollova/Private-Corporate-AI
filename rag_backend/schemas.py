@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Pydantic models for API request and response validation.
+# =============================================================================
+
 from typing import Optional, List
 from pydantic import BaseModel, Field
 

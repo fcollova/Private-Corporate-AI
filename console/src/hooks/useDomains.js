@@ -1,3 +1,11 @@
+/* =============================================================================
+   PROJECT: Private Corporate AI
+   AUTHOR: Francesco Collovà
+   LICENSE: Apache License 2.0
+   YEAR: 2026
+   DESCRIPTION: Custom React hook to manage domain fetching and state.
+   ============================================================================= */
+
 import { useState, useEffect } from 'react';
 import { api } from '../api/ragClient';
 

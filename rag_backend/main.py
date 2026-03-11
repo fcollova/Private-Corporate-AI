@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Main FastAPI application entry point and router inclusion.
+# =============================================================================
+
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,4 +51,6 @@ app.include_router(chat.router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("rag_backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Siamo gia' dentro la cartella rag_backend nel container (/app)
+    # Rimuoviamo il prefisso del modulo per evitare ModuleNotFoundError
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

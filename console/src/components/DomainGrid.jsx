@@ -1,3 +1,11 @@
+/* =============================================================================
+   PROJECT: Private Corporate AI
+   AUTHOR: Francesco Collovà
+   LICENSE: Apache License 2.0
+   YEAR: 2026
+   DESCRIPTION: UI component to display a grid of available domains (collections).
+   ============================================================================= */
+
 import React from 'react';
 
 const DomainGrid = ({ domains, onSelect, onDelete, selected }) => (

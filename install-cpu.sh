@@ -1,21 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PRIVATE CORPORATE AI — Installer Modalità LITE (CPU-only)
-# Autore: Francesco Collovà
-# Licenza: Apache 2.0
-# Versione: 1.1.0
-# =============================================================================
-# Script dedicato alla modalità LITE, ottimizzata per server senza GPU NVIDIA.
-# Gestisce automaticamente:
-#   - Rilevamento RAM disponibile e selezione modello ottimale
-#   - Configurazione thread CPU (fisici, escludendo hyperthreading)
-#   - Impostazione parametri RAG ottimizzati per CPU
-#   - Verifica supporto AVX2 (richiesto da Ollama)
-#
-# Utilizzo:
-#   sudo ./install-cpu.sh
-#   sudo ./install-cpu.sh --model mistral:7b-instruct-q4_K_M
-#   sudo ./install-cpu.sh --model phi3:mini --threads 4
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Installer script for LITE mode (CPU-only), optimized for servers without NVIDIA GPUs.
 # =============================================================================
 
 set -euo pipefail

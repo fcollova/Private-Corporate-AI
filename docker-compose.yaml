@@ -64,7 +64,7 @@ services:
   #    Porta interna: 11434
   # =========================================================================
   ollama:
-    image: ollama/ollama:latest
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
     container_name: corporate_ai_ollama
     restart: unless-stopped
     networks:
@@ -91,7 +91,7 @@ services:
   #    Si avvia una sola volta e termina (restart: on-failure)
   # =========================================================================
   ollama_init:
-    image: ollama/ollama:latest
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
     container_name: corporate_ai_ollama_init
     restart: on-failure
     networks:
@@ -121,7 +121,7 @@ services:
   #    Porta REST: 6333 | Porta gRPC: 6334
   # =========================================================================
   qdrant:
-    image: qdrant/qdrant:latest
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:latest}
     container_name: corporate_ai_qdrant
     restart: unless-stopped
     networks:
@@ -211,7 +211,7 @@ services:
   #    Porta interna: 8080
   # =========================================================================
   open_webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ${WEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
     container_name: corporate_ai_webui
     restart: unless-stopped
     networks:
@@ -284,7 +284,7 @@ services:
   #    Immagine: nginx:alpine (BSD-like license, uso commerciale OK)
   # =========================================================================
   nginx:
-    image: nginx:alpine
+    image: ${NGINX_IMAGE:-nginx:alpine}
     container_name: corporate_ai_nginx
     restart: unless-stopped
     networks:

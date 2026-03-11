@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: Configuration settings loaded from environment variables and .env.
+# =============================================================================
+
 import os
 from pathlib import Path
 from pydantic import Field

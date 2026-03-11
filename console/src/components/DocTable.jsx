@@ -1,3 +1,11 @@
+/* =============================================================================
+   PROJECT: Private Corporate AI
+   AUTHOR: Francesco Collovà
+   LICENSE: Apache License 2.0
+   YEAR: 2026
+   DESCRIPTION: UI component to display a table of indexed documents.
+   ============================================================================= */
+
 import React from 'react';
 
 const DocTable = ({ docs, onAction, onDelete, onReindex }) => (

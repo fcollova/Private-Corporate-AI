@@ -1,3 +1,11 @@
+# =============================================================================
+# PROJECT: Private Corporate AI
+# AUTHOR: Francesco Collovà
+# LICENSE: Apache License 2.0
+# YEAR: 2026
+# DESCRIPTION: API endpoints for domain (collection) management.
+# =============================================================================
+
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from qdrant_client.models import Filter, FieldCondition, MatchValue, PointIdsList

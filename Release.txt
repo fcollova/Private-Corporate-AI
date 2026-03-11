@@ -1,0 +1,9 @@
+
+  ┌────────────┬───────────────────────────────┬────────────────────┬───────────────────────────────┐
+  │ Servizio   │ Immagine Docker               │ Versione Specifica │ Stato                         │
+  ├────────────┼───────────────────────────────┼────────────────────┼───────────────────────────────┤
+  │ Open WebUI │ ghcr.io/open-webui/open-webui │ v0.8.8             │ Stabile (Richiesta)           │
+  │ Ollama     │ ollama/ollama                 │ 0.17.8             │ Ultima stabile (Marzo 2026)   │
+  │ Qdrant     │ qdrant/qdrant                 │ v1.17.0            │ Versione rilevata nel sistema │
+  │ Nginx      │ nginx                         │ 1.27.4-alpine      │ Mainline stabile              │
+  └────────────┴───────────────────────────────┴────────────────────┴───────────────────────────────┘
