@@ -45,27 +45,63 @@ def get_document_loader(file_path: str, file_ext: str):
     }
     return loaders[file_ext.lower()]()
 
+async def generate_contextual_prefix(full_text: str, chunk_content: str, filename: str) -> str:
+    """
+    Genera un prefisso di contesto per il chunk utilizzando l'LLM locale.
+    Implementazione ispirata alla tecnica 'Contextual Retrieval' di Anthropic.
+    """
+    llm = rag.get_llm()
+    # Limitiamo il testo completo per evitare di superare la context window dell'LLM di supporto
+    doc_context = full_text[:4000] 
+    
+    prompt = f"""Analizza questo estratto dal documento '{filename}'.
+DOCUMENTO INTERO (estratto):
+{doc_context}
+---
+ESTRATTO SPECIFICO:
+{chunk_content}
+---
+Fornisci una brevissima frase (massimo 15 parole) che spieghi a quale sezione appartiene l'estratto e il suo contesto generale nel documento.
+RISPOSTA:"""
+    
+    try:
+        # Usiamo un timeout ridotto per non rallentare troppo l'indicizzazione
+        context = await asyncio.to_thread(llm.invoke, prompt)
+        return f"[CONTESTO: {context.strip()}] "
+    except Exception as e:
+        logger.warning(f"Errore generazione contesto per chunk: {e}")
+        return ""
+
 async def process_document(file_path: str, filename: str, doc_id: str, collection_name: Optional[str] = None) -> int:
     file_ext = Path(filename).suffix.lower()
     target_collection = collection_name or settings.qdrant_collection_name
     
     loader = get_document_loader(file_path, file_ext)
     raw_documents = loader.load()
+    full_doc_text = "\n".join([doc.page_content for doc in raw_documents])
     
+    # Chunking Semantico: Privilegiamo la divisione per paragrafi e sezioni logiche
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
+        separators=["\n\n\n", "\n\n", "\n", ". ", "? ", "! ", " ", ""],
         add_start_index=True,
     )
     chunks = text_splitter.split_documents(raw_documents)
 
+    # Applicazione Contextual Retrieval
+    logger.info(f"Generazione contesto per {len(chunks)} chunk di {filename}...")
     for i, chunk in enumerate(chunks):
+        prefix = await generate_contextual_prefix(full_doc_text, chunk.page_content, filename)
+        chunk.page_content = prefix + chunk.page_content
+        
         chunk.metadata.update({
             "doc_id":      doc_id,
             "filename":    filename,
             "file_type":   file_ext,
             "chunk_index": i,
             "indexed_at":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "has_context": True if prefix else False
         })
 
     await rag.ensure_collection_exists(target_collection)
