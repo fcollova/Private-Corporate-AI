@@ -17,11 +17,11 @@ pydantic-settings==2.7.0           # Gestione configurazione da .env (MIT)
 # -----------------------------------------------------------------------------
 # LANGCHAIN — Orchestrazione RAG Pipeline
 # -----------------------------------------------------------------------------
-langchain==0.3.13                  # Framework principale (MIT)
-langchain-community==0.3.13        # Integrazioni community (MIT)
-langchain-ollama==0.2.2            # Integrazione nativa Ollama (MIT)
-langchain-qdrant==0.2.0            # Integrazione nativa Qdrant (MIT)
-langchain-text-splitters==0.3.3    # Text chunking (MIT)
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-ollama>=0.2.0
+langchain-qdrant>=0.2.0
+langchain-text-splitters>=0.3.0
 
 # -----------------------------------------------------------------------------
 # VECTOR DATABASE CLIENT
@@ -33,7 +33,6 @@ qdrant-client==1.12.1              # Client Python Qdrant (Apache 2.0)
 # -----------------------------------------------------------------------------
 pypdf==5.1.0                       # Parsing PDF (BSD)
 python-docx==1.1.2                 # Parsing DOCX Word (MIT)
-unstructured[local-inference]==0.16.10  # Parsing generico documenti (Apache 2.0)
 openpyxl==3.1.5                    # Parsing XLSX Excel (MIT)
 python-pptx==1.0.2                 # Parsing PPTX PowerPoint (MIT)
 
@@ -41,7 +40,7 @@ python-pptx==1.0.2                 # Parsing PPTX PowerPoint (MIT)
 # EMBEDDINGS & ML UTILITIES
 # -----------------------------------------------------------------------------
 numpy==1.26.4                      # Calcolo numerico (BSD)
-sentence-transformers==3.3.1       # Modelli embedding locali fallback (Apache 2.0)
+fastembed==0.4.1                   # Sparse & Dense embeddings (Apache 2.0)
 
 # -----------------------------------------------------------------------------
 # HTTP CLIENT & UTILITIES

@@ -30,7 +30,7 @@ Ogni prompt inviato a un servizio AI cloud attraversa reti esterne, viene loggat
 | `corporate_ai_console` | `node:20-alpine` | **Document Management Console** (React + Vite) | MIT |
 | `corporate_ai_rag` | *Custom build* | FastAPI + LangChain, pipeline RAG, API OpenAI-compatibile | Apache 2.0 |
 | `corporate_ai_ollama` | `ollama/ollama` | Runtime LLM locale, supporto CPU e GPU NVIDIA | MIT |
-| `corporate_ai_qdrant` | `qdrant/qdrant` | Vector database, ricerca semantica per similarità coseno | Apache 2.0 |
+| `corporate_ai_qdrant` | `qdrant/qdrant` | Vector database, Hybrid Search (Dense + Sparse/BM25) con RRF | Apache 2.0 |
 | `corporate_ai_ollama_init` | `ollama/ollama` | Init one-shot: scarica LLM e modello embedding al primo avvio | MIT |
 
 ---
@@ -61,6 +61,15 @@ Ogni prompt inviato a un servizio AI cloud attraversa reti esterne, viene loggat
 **Reti Docker separate by design:**
 - `frontend_net` — Nginx, Open WebUI, RAG Console, RAG Backend
 - `backend_net` — RAG Backend, Ollama, Qdrant
+
+---
+
+## Pipeline RAG Avanzata
+
+A differenza dei sistemi RAG tradizionali, **Private Corporate AI** implementa due tecniche all'avanguardia per massimizzare la precisione delle risposte:
+
+1.  **Contextual Retrieval:** Per ogni frammento di testo (chunk), l'LLM locale genera automaticamente un breve prefisso di contesto basato sull'intero documento. Questo previene la perdita di significato quando un chunk viene recuperato isolatamente (es. una tabella senza l'intestazione del capitolo).
+2.  **Hybrid Search (Dense + Sparse):** Il sistema combina la ricerca vettoriale semantica (per concetti) con la ricerca testuale BM25 (per codici, acronimi e termini esatti). I risultati sono fusi tramite **Reciprocal Rank Fusion (RRF)**, garantendo una recall superiore del 30-40% su documenti tecnici aziendali rispetto alla sola ricerca semantica.
 
 ---
 

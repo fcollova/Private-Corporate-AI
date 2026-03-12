@@ -127,7 +127,17 @@ async def rag_query(question: str, collection_name: Optional[str] = None, top_k:
     llm = rag.get_llm(model_name)
     vector_store = rag.get_vector_store(target_collection)
 
-    retriever = vector_store.as_retriever(search_kwargs={"k": top_k or settings.top_k_results, "score_threshold": 0.3})
+    # Verifica se Hybrid Search è realmente disponibile nel core
+    is_hybrid_available = settings.hybrid_search_enabled and rag.get_sparse_embeddings() is not None
+    
+    search_type = "hybrid" if is_hybrid_available else "similarity"
+    search_kwargs = {"k": top_k or settings.top_k_results}
+    
+    # Lo score threshold ha senso principalmente per similarity search pura
+    if not is_hybrid_available:
+        search_kwargs["score_threshold"] = 0.3
+
+    retriever = vector_store.as_retriever(search_type=search_type, search_kwargs=search_kwargs)
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm, chain_type="stuff", retriever=retriever, 
         return_source_documents=True,

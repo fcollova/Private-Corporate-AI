@@ -29,13 +29,7 @@ ARG INSTALL_MODE=gpu
 COPY requirements.txt .
 
 # Installazione dipendenze Python con caching intelligente
-# 1. Se CPU, installa torch+cpu
-# 2. Poi installa tutto il resto
-RUN if [ "$INSTALL_MODE" = "cpu" ]; then \
-        echo ">>> Installazione PyTorch ottimizzata per CPU (LITE mode)..."; \
-        pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu; \
-    fi && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
 # Copia il resto del codice solo alla fine (così i cambi al codice non rifanno il pip install)
 COPY . .

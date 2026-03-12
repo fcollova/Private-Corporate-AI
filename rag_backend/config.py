@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=1000, ge=100)
     chunk_overlap: int = Field(default=200, ge=0)
     top_k_results: int = Field(default=5, ge=1, le=20)
+    hybrid_search_enabled: bool = Field(default=True)
     upload_dir: str = Field(default="/app/uploads")
     log_level: str = Field(default="INFO")
 
