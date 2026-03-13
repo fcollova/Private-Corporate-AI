@@ -19,6 +19,28 @@ Ogni prompt inviato a un servizio AI cloud attraversa reti esterne, viene loggat
 
 **Private Corporate AI** risolve il problema alla radice: l'intero stack gira localmente. Il prompt nasce sul browser dell'utente, attraversa Nginx, viene elaborato dai container Docker, raggiunge il modello LLM — e la risposta percorre il cammino inverso. **In nessun momento un byte lascia il perimetro aziendale.**
 
+Oltre alla privacy, questo progetto nasce per rispondere alla crescente necessità di **conformità normativa**, in particolare rispetto al nuovo **Regolamento UE sull'Intelligenza Artificiale (EU AI Act)**, garantendo alle aziende uno strumento potente ma sicuro e verificabile.
+
+---
+
+## Conformità EU AI Act
+
+### VANTAGGI STRUTTURALI
+L'architettura on-premise offre vantaggi di conformità che i sistemi AI cloud-based non possono garantire con la stessa semplicità:
+
+*   **Data Sovereignty Completa:** Nessun dato aziendale lascia i server dell'organizzazione. Elimina alla radice i problemi di trasferimento dati verso provider GPAI cloud (GPT-4, Gemini, ecc.), soggetti agli obblighi dell'Art. 53.
+*   **Human Oversight by Design:** Ogni risposta del sistema cita le fonti documentali verificabili. Il sistema genera output consultivi, non decisioni autonome.
+*   **Cybersecurity Integrata:** SSL/TLS, reti Docker isolate, credenziali generate casualmente ad ogni installazione (base per i requisiti dell'Art. 15).
+*   **Tracciabilità Documentale:** Ogni documento indicizzato è identificabile con ID univoco, timestamp e metadati (base per il record-keeping richiesto dall'Art. 12).
+
+
+### ⚠️ ATTENZIONE: SCENARI AD ALTO RISCHIO
+Il profilo di rischio cambia se il sistema viene utilizzato per:
+*   Decisioni su personale, selezione o valutazione dei dipendenti.
+*   Valutazioni creditizie o assicurative.
+*   Contesti di Pubblica Amministrazione.
+
+
 ---
 
 ## Stack tecnologico
