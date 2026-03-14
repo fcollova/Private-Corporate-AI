@@ -5,6 +5,7 @@
 # File ambiente (CONTIENE PASSWORD — NON committare mai)
 .env
 .env.local
+.env.backup*
 GEMINI.md
 ROADMAP.md
 
