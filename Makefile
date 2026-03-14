@@ -18,354 +18,354 @@ COMPOSE_BASE = docker compose --env-file .env --env-file versions.env
 COMPOSE_LITE = docker compose -f docker-compose.yaml -f docker-compose.lite.yaml --env-file .env --env-file versions.env
 
 # -----------------------------------------------------------------------------
-# AVVIO / STOP
+# START / STOP
 # -----------------------------------------------------------------------------
 
-## Avvia lo stack in modalità FULL (GPU NVIDIA richiesta)
+## Start the stack in FULL mode (NVIDIA GPU required)
 up-gpu:
-	@echo ">>> Avvio Private Corporate AI — Modalità FULL (GPU)"
-	@echo ">>> Assicurati che i driver NVIDIA e nvidia-container-toolkit siano installati"
+	@echo ">>> Starting Private Corporate AI — FULL Mode (GPU)"
+	@echo ">>> Ensure NVIDIA drivers and nvidia-container-toolkit are installed"
 	$(COMPOSE_BASE) up -d --build
 	@echo ""
-	@echo ">>> Stack avviato! Accedi a: https://localhost"
-	@echo ">>> Attendi il download dei modelli: make logs-init"
+	@echo ">>> Stack started! Access at: https://localhost"
+	@echo ">>> Wait for model download: make logs-init"
 
-## Avvia lo stack in modalità LITE (CPU-only, nessuna GPU richiesta)
+## Start the stack in LITE mode (CPU-only, no GPU required)
 up-lite:
-	@echo ">>> Avvio Private Corporate AI — Modalità LITE (CPU-only)"
-	@echo ">>> Consiglio: imposta LLM_MODEL=phi3:mini o gemma2:2b nel .env"
+	@echo ">>> Starting Private Corporate AI — LITE Mode (CPU-only)"
+	@echo ">>> Tip: set LLM_MODEL=phi3:mini or gemma2:2b in .env"
 	$(COMPOSE_LITE) up -d --build
 	@echo ""
-	@echo ">>> Stack avviato in modalità LITE! Accedi a: https://localhost"
-	@echo ">>> La prima risposta LLM potrebbe richiedere 1-3 minuti su CPU"
-	@echo ">>> Monitora il download modelli: make logs-init"
+	@echo ">>> Stack started in LITE mode! Access at: https://localhost"
+	@echo ">>> First LLM response may take 1-3 minutes on CPU"
+	@echo ">>> Monitor model download: make logs-init"
 
-## Ferma tutti i servizi (modalità GPU)
+## Stop all services (GPU mode)
 down:
 	$(COMPOSE_BASE) down
 
-## Ferma tutti i servizi (modalità LITE)
+## Stop all services (LITE mode)
 down-lite:
 	$(COMPOSE_LITE) down
 
-## Ricostruisce l'immagine del RAG Backend
+## Rebuild RAG Backend image
 build:
 	$(COMPOSE_BASE) build rag_backend
 
-## Riavvio completo dopo down (modalità LITE) — comando principale per uso quotidiano
+## Full restart after down (LITE mode) — main command for daily use
 restart-lite:
-	@echo ">>> Riavvio Private Corporate AI — Modalità LITE"
+	@echo ">>> Restarting Private Corporate AI — LITE Mode"
 	$(COMPOSE_LITE) up -d
 	@echo ""
-	@echo ">>> Stack riavviato! Accedi a: https://localhost"
-	@echo ">>> Attendi ~60s poi verifica con: make health"
+	@echo ">>> Stack restarted! Access at: https://localhost"
+	@echo ">>> Wait ~60s then verify with: make health"
 
-## Riavvio completo dopo down (modalità GPU)
+## Full restart after down (GPU mode)
 restart-gpu:
-	@echo ">>> Riavvio Private Corporate AI — Modalità FULL (GPU)"
+	@echo ">>> Restarting Private Corporate AI — FULL Mode (GPU)"
 	$(COMPOSE_BASE) up -d
 	@echo ""
-	@echo ">>> Stack riavviato! Accedi a: https://localhost"
+	@echo ">>> Stack restarted! Access at: https://localhost"
 
-## Ricrea e riavvia solo il RAG backend (dopo modifiche a app.py)
+## Recreate and restart only the RAG backend (after app.py changes)
 rebuild-rag:
-	@echo ">>> Rebuild RAG Backend..."
+	@echo ">>> Rebuilding RAG Backend..."
 	$(COMPOSE_LITE) up -d --build --force-recreate rag_backend
-	@echo ">>> RAG Backend ricostruito. Verifica: make logs-rag"
+	@echo ">>> RAG Backend rebuilt. Verify with: make logs-rag"
 
-## Ricrea e riavvia solo Nginx (dopo modifiche a nginx.conf)
+## Recreate and restart only Nginx (after nginx.conf changes)
 reload-nginx:
-	@echo ">>> Ricarica configurazione Nginx..."
+	@echo ">>> Reloading Nginx configuration..."
 	docker exec corporate_ai_nginx nginx -t && docker exec corporate_ai_nginx nginx -s reload
-	@echo ">>> Nginx ricaricato."
+	@echo ">>> Nginx reloaded."
 
 # -----------------------------------------------------------------------------
-# LOG E MONITORING
+# LOGS AND MONITORING
 # -----------------------------------------------------------------------------
 
-## Mostra log di tutti i servizi in tempo reale
+## Show logs for all services in real-time
 logs:
 	$(COMPOSE_BASE) logs -f
 
-## Mostra log del RAG Backend
+## Show RAG Backend logs
 logs-rag:
 	$(COMPOSE_BASE) logs -f rag_backend
 
-## Mostra log del download modelli
+## Show model download logs
 logs-init:
 	$(COMPOSE_BASE) logs -f ollama_init
 
-## Mostra log di Ollama (inferenza LLM)
+## Show Ollama logs (LLM inference)
 logs-ollama:
 	$(COMPOSE_BASE) logs -f ollama
 
-## Mostra stato di tutti i container
+## Show status of all containers
 status:
 	$(COMPOSE_BASE) ps
 
-## Mostra utilizzo GPU in tempo reale (solo modalità FULL)
+## Show real-time GPU usage (FULL mode only)
 gpu-monitor:
 	watch -n 2 nvidia-smi
 
-## Mostra utilizzo CPU/RAM di tutti i container in tempo reale
+## Show real-time CPU/RAM usage for all containers
 monitor:
 	docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}"
 
-## Snapshot istantaneo utilizzo risorse (senza aggiornamento continuo)
+## Snapshot of resource usage (no continuous update)
 monitor-once:
 	docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
 
-## Mostra log di Qdrant (vector database)
+## Show Qdrant logs (vector database)
 logs-qdrant:
 	$(COMPOSE_LITE) logs -f qdrant
 
-## Mostra log di Nginx (reverse proxy)
+## Show Nginx logs (reverse proxy)
 logs-nginx:
 	$(COMPOSE_LITE) logs -f nginx
 
-## Mostra log di Open WebUI
+## Show Open WebUI logs
 logs-webui:
 	$(COMPOSE_LITE) logs -f open_webui
 
-## Mostra log LITE (con entrambi i file compose)
+## Show LITE logs (using both compose files)
 logs-lite:
 	$(COMPOSE_LITE) logs -f
 
-## Stato container con entrambi i file compose (LITE)
+## Container status with both compose files (LITE)
 status-lite:
 	$(COMPOSE_LITE) ps
 
 # -----------------------------------------------------------------------------
-# DOWNLOAD MODELLI
+# MODEL DOWNLOAD
 # -----------------------------------------------------------------------------
 
-## Scarica i modelli configurati in .env (modalità GPU)
+## Download models configured in .env (GPU mode)
 pull-models-gpu:
 	$(COMPOSE_BASE) run --rm ollama_init
 
-## Scarica i modelli consigliati per CPU (modalità LITE)
+## Download recommended models for CPU (LITE mode)
 pull-models-lite:
-	@echo ">>> Download modelli ottimizzati per CPU..."
+	@echo ">>> Downloading CPU-optimized models..."
 	$(COMPOSE_BASE) exec ollama ollama pull ${LLM_MODEL}
 	$(COMPOSE_BASE) exec ollama ollama pull ${EMBEDDING_MODEL}
 
-## Lista modelli installati su Ollama
+## List models installed on Ollama
 list-models:
 	$(COMPOSE_LITE) exec ollama ollama list
 
-## Modello attualmente caricato in memoria
+## Model currently loaded in memory
 active-model:
 	$(COMPOSE_LITE) exec ollama ollama ps
 
-## Scarica un modello specifico — uso: make pull-model MODEL=mistral:7b-instruct-q4_K_M
+## Download a specific model — usage: make pull-model MODEL=mistral:7b-instruct-q4_K_M
 pull-model:
-	@[ -n "$(MODEL)" ] || (echo "Specifica il modello: make pull-model MODEL=mistral:7b-instruct-q4_K_M" && exit 1)
+	@[ -n "$(MODEL)" ] || (echo "Specify model: make pull-model MODEL=mistral:7b-instruct-q4_K_M" && exit 1)
 	docker exec corporate_ai_ollama ollama pull $(MODEL)
 
-## Rimuove un modello specifico — uso: make remove-model MODEL=gemma2:2b
+## Remove a specific model — usage: make remove-model MODEL=gemma2:2b
 remove-model:
-	@[ -n "$(MODEL)" ] || (echo "Specifica il modello: make remove-model MODEL=gemma2:2b" && exit 1)
+	@[ -n "$(MODEL)" ] || (echo "Specify model: make remove-model MODEL=gemma2:2b" && exit 1)
 	docker exec corporate_ai_ollama ollama rm $(MODEL)
 
 # -----------------------------------------------------------------------------
-# TEST E HEALTH
+# TEST AND HEALTH
 # -----------------------------------------------------------------------------
 
-## Verifica stato di salute di tutti i servizi
+## Verify health status of all services
 health:
-	@echo ">>> Healthcheck RAG Backend:"
+	@echo ">>> RAG Backend Healthcheck:"
 	curl -sk https://localhost/api/rag/health | python3 -m json.tool
 	@echo ""
-	@echo ">>> Healthcheck Qdrant:"
-	curl -sk http://localhost:6333/healthz 2>/dev/null || echo "Qdrant non raggiungibile dall'esterno (normale se UFW attivo)"
+	@echo ">>> Qdrant Healthcheck:"
+	curl -sk http://localhost:6333/healthz 2>/dev/null || echo "Qdrant not reachable from outside (normal if UFW active)"
 
-## Test query RAG di esempio
+## Test sample RAG query
 test-chat:
-	@echo ">>> Test query RAG..."
+	@echo ">>> Testing RAG query..."
 	curl -sk -X POST https://localhost/api/rag/chat \
 	  -H "Content-Type: application/json" \
-	  -d '{"question": "Quali documenti sono disponibili?", "top_k": 3}' \
+	  -d '{"question": "What documents are available?", "top_k": 3}' \
 	  | python3 -m json.tool
 
-## Lista documenti indicizzati in Qdrant
+## List documents indexed in Qdrant
 list-docs:
 	curl -sk https://localhost/api/rag/documents/list | python3 -m json.tool
 
-## Carica un documento nel RAG — uso: make upload-doc FILE=/percorso/documento.pdf
+## Upload a document to RAG — usage: make upload-doc FILE=/path/to/document.pdf
 upload-doc:
-	@[ -n "$(FILE)" ] || (echo "Specifica il file: make upload-doc FILE=/percorso/documento.pdf" && exit 1)
+	@[ -n "$(FILE)" ] || (echo "Specify file: make upload-doc FILE=/path/to/document.pdf" && exit 1)
 	curl -sk -X POST https://localhost/api/rag/documents/upload -F "file=@$(FILE)" | python3 -m json.tool
 
-## Crea la collezione Qdrant se non esiste (necessario al primo avvio)
+## Create Qdrant collection if it doesn't exist (required at first start)
 init-collection:
-	@echo ">>> Creazione collezione corporate_docs in Qdrant..."
+	@echo ">>> Creating corporate_docs collection in Qdrant..."
 	$(eval QDRANT_KEY := $(shell grep QDRANT_API_KEY .env | cut -d= -f2))
 	curl -s -X PUT http://localhost:6333/collections/corporate_docs 	  -H "Content-Type: application/json" 	  -H "api-key: $(QDRANT_KEY)" 	  -d '{"vectors": {"size": 768, "distance": "Cosine"}}' | python3 -m json.tool
 
-## Lista modelli RAG esposti via API OpenAI-compatibile
+## List RAG models exposed via OpenAI-compatible API
 list_rag_models:
 	curl -sk https://localhost/rag/v1/models | python3 -m json.tool
 
-## Svuota completamente il RAG (cancella documenti e indice vettoriale)
+## Completely wipe the RAG (delete documents and vector index)
 wipe-rag:
-	@echo ">>> ATTENZIONE: Questa operazione cancellera' TUTTI i documenti indicizzati!"
-	@read -p "Sei sicuro? Digita 'SI' per confermare: " confirm && [ "$$confirm" = "SI" ]
-	@echo ">>> Eliminazione indice vettoriale Qdrant..."
+	@echo ">>> WARNING: This operation will delete ALL indexed documents!"
+	@read -p "Are you sure? Type 'YES' to confirm: " confirm && [ "$$confirm" = "YES" ]
+	@echo ">>> Deleting Qdrant vector index..."
 	$(eval QDRANT_KEY := $(shell grep QDRANT_API_KEY .env | cut -d= -f2))
 	@docker exec corporate_ai_rag curl -s -X DELETE http://qdrant:6333/collections/corporate_docs \
 	  -H "api-key: $(QDRANT_KEY)" > /dev/null || true
-	@echo ">>> Eliminazione file fisici in uploads/..."
+	@echo ">>> Deleting physical files in uploads/..."
 	@docker exec corporate_ai_rag sh -c "rm -rf /app/uploads/* && touch /app/uploads/.gitkeep"
-	@echo ">>> RAG ripulito correttamente."
-	@echo ">>> La collezione verra' ricreata automaticamente al prossimo upload."
+	@echo ">>> RAG cleaned successfully."
+	@echo ">>> Collection will be automatically recreated on next upload."
 
 # -----------------------------------------------------------------------------
 # CONSOLE
 # -----------------------------------------------------------------------------
 
-## Avvia la console (inclusa nel normale up-gpu / up-lite)
+## Start the console (included in standard up-gpu / up-lite)
 up-console:
 	$(COMPOSE_BASE) up -d console
-	@echo "Console disponibile su https://localhost/console/"
+	@echo "Console available at https://localhost/console/"
 
-## Rebuild della sola console (dopo modifiche al codice React)
+## Rebuild console only (after React code changes)
 rebuild-console:
 	$(COMPOSE_BASE) build --no-cache console
 	$(COMPOSE_BASE) up -d --force-recreate console
-	@echo "Console ricompilata e riavviata"
+	@echo "Console recompiled and restarted"
 
-## Log in tempo reale della console
+## Real-time console logs
 logs-console:
 	$(COMPOSE_BASE) logs -f console
 
-## Apri la console nel browser (Linux/WSL)
+## Open console in browser (Linux/WSL)
 open-console:
-	@xdg-open https://localhost/console/ 2>/dev/null || echo "Apri: https://localhost/console/"
+	@xdg-open https://localhost/console/ 2>/dev/null || echo "Open: https://localhost/console/"
 
 # -----------------------------------------------------------------------------
-# GESTIONE CLIENTE
+# CLIENT MANAGEMENT
 # -----------------------------------------------------------------------------
 
-## Riconfigura branding, system prompt e domini senza reinstallare
+## Reconfigure branding, system prompt, and domains without reinstalling
 reconfigure-client:
 	sudo ./install.sh --reconfigure-client
 
-## Mostra il profilo cliente corrente
+## Show current client profile
 client-info:
 	@if [ -f branding/client.json ]; then \
 		python3 -c "import json,sys; d=json.load(open('branding/client.json')); \
 		[print(f'  {k:<20} {v}') for k,v in d.items()]"; \
 	else \
-		echo "  Nessun profilo cliente configurato. Esegui: make reconfigure-client"; \
+		echo "  No client profile configured. Run: make reconfigure-client"; \
 	fi
 
-## Modifica il system prompt del modello LLM
+## Edit LLM model system prompt
 edit-system-prompt:
 	@${EDITOR:-nano} rag_backend/system_prompt.txt
 	$(COMPOSE_BASE) restart rag_backend
-	@echo "System prompt aggiornato e rag_backend riavviato"
+	@echo "System prompt updated and rag_backend restarted"
 
-## Esporta configurazione cliente per backup o replica
+## Export client configuration for backup or replication
 export-client-config:
 	@tar -czf client-config-$(shell date +%Y%m%d).tar.gz \
 		branding/ rag_backend/system_prompt.txt .env
-	@echo "Configurazione esportata: client-config-$(shell date +%Y%m%d).tar.gz"
+	@echo "Configuration exported: client-config-$(shell date +%Y%m%d).tar.gz"
 
 # -----------------------------------------------------------------------------
 # BACKUP
 # -----------------------------------------------------------------------------
 
 
-## Esegui backup completo dei dati (indice vettoriale + documenti + config)
+## Perform full data backup (vector index + documents + config)
 backup:
-	@echo ">>> Backup Private Corporate AI..."
+	@echo ">>> Backing up Private Corporate AI..."
 	@mkdir -p ./backups
 	sudo tar -czf ./backups/backup_$(shell date +%Y%m%d_%H%M%S).tar.gz \
 	  /var/lib/docker/volumes/private-corporate-ai_qdrant_data \
 	  /var/lib/docker/volumes/private-corporate-ai_rag_uploads \
 	  /var/lib/docker/volumes/private-corporate-ai_webui_data \
 	  .env 2>/dev/null || true
-	@echo ">>> Backup completato in ./backups/"
+	@echo ">>> Backup completed in ./backups/"
 	@ls -lh ./backups/ | tail -5
 
 # -----------------------------------------------------------------------------
-# SETUP INIZIALE
+# INITIAL SETUP
 # -----------------------------------------------------------------------------
 
-## Setup rapido: crea .env e certificati SSL self-signed
+## Quick setup: create .env and self-signed SSL certificates
 setup:
-	@echo ">>> Setup iniziale Private Corporate AI..."
-	@[ -f .env ] && echo "  .env gia' presente, skip" || (cp .env.example .env && echo "  .env creato da .env.example — MODIFICALO prima di avviare!")
+	@echo ">>> Initial Setup Private Corporate AI..."
+	@[ -f .env ] && echo "  .env already exists, skipping" || (cp .env.example .env && echo "  .env created from .env.example — EDIT IT before starting!")
 	@mkdir -p nginx/ssl
-	@[ -f nginx/ssl/server.crt ] && echo "  Certificati SSL gia' presenti, skip" || \
+	@[ -f nginx/ssl/server.crt ] && echo "  SSL certificates already exist, skipping" || \
 	  (openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
 	    -keyout nginx/ssl/server.key -out nginx/ssl/server.crt \
-	    -subj "/C=IT/ST=Italia/L=Roma/O=CorporateAI/CN=localhost" \
+	    -subj "/C=IT/ST=Italy/L=Rome/O=CorporateAI/CN=localhost" \
 	    -addext "subjectAltName=IP:127.0.0.1,DNS:localhost" 2>/dev/null && \
 	    chmod 600 nginx/ssl/server.key && \
-	    echo "  Certificati SSL self-signed generati in nginx/ssl/")
+	    echo "  Self-signed SSL certificates generated in nginx/ssl/")
 	@echo ""
-	@echo ">>> Setup completato!"
-	@echo "    1. Modifica .env con il modello e le password desiderate"
-	@echo "    2. Per GPU:  make up-gpu"
-	@echo "    3. Per CPU:  make up-lite"
+	@echo ">>> Setup completed!"
+	@echo "    1. Edit .env with desired model and passwords"
+	@echo "    2. For GPU:  make up-gpu"
+	@echo "    3. For CPU:  make up-lite"
 
-## Rimozione completa (container + volumi — ATTENZIONE: cancella tutti i dati!)
+## Full removal (containers + volumes — WARNING: deletes ALL data!)
 clean:
-	@echo ">>> ATTENZIONE: questa operazione cancellera' TUTTI i dati!"
-	@read -p "Sei sicuro? Digita 'SI' per confermare: " confirm && [ "$$confirm" = "SI" ]
+	@echo ">>> WARNING: this operation will delete ALL data!"
+	@read -p "Are you sure? Type 'YES' to confirm: " confirm && [ "$$confirm" = "YES" ]
 	$(COMPOSE_BASE) down -v --remove-orphans
-	@echo ">>> Stack rimosso completamente"
+	@echo ">>> Stack removed completely"
 
 # -----------------------------------------------------------------------------
 # HELP
 # -----------------------------------------------------------------------------
 
-## Mostra questo messaggio di aiuto
+## Show this help message
 help:
 	@echo ""
-	@echo "  Private Corporate AI — Comandi disponibili"
+	@echo "  Private Corporate AI — Available Commands"
 	@echo "  ==========================================="
 	@grep -E '^##' $(MAKEFILE_LIST) | sed 's/## /  /'
 	@echo ""
-	@echo "  Esempi comuni:"
-	@echo "    make setup                          → Prima configurazione"
-	@echo "    make up-lite                        → Avvia (modalità CPU)"
-	@echo "    make restart-lite                   → Riavvia dopo down"
-	@echo "    make down-lite                      → Ferma tutto"
-	@echo "    make status-lite                    → Stato container"
-	@echo "    make health                         → Verifica servizi"
-	@echo "    make logs-lite                      → Log in tempo reale"
-	@echo "    make monitor                        → Risorse CPU/RAM"
-	@echo "    make test-chat                      → Test query RAG"
-	@echo "    make pull-model MODEL=mistral:7b    → Scarica modello"
-	@echo "    make upload-doc FILE=./doc.pdf      → Carica documento"
+	@echo "  Common examples:"
+	@echo "    make setup                          → Initial configuration"
+	@echo "    make up-lite                        → Start (CPU mode)"
+	@echo "    make restart-lite                   → Restart after down"
+	@echo "    make down-lite                      → Stop all"
+	@echo "    make status-lite                    → Container status"
+	@echo "    make health                         → Verify services"
+	@echo "    make logs-lite                      → Real-time logs"
+	@echo "    make monitor                        → CPU/RAM resources"
+	@echo "    make test-chat                      → Test RAG query"
+	@echo "    make pull-model MODEL=mistral:7b    → Download model"
+	@echo "    make upload-doc FILE=./doc.pdf      → Upload document"
 	@echo "    make rebuild-rag                    → Rebuild RAG backend"
-	@echo "    make reload-nginx                   → Ricarica Nginx"
+	@echo "    make reload-nginx                   → Reload Nginx"
 	@echo ""
 
 .DEFAULT_GOAL := help
 
 # -----------------------------------------------------------------------------
-# INSTALLAZIONE / DISINSTALLAZIONE
+# INSTALLATION / UNINSTALLATION
 # -----------------------------------------------------------------------------
 
-## Installazione interattiva (rileva hardware, sceglie GPU o CPU)
+## Interactive installation (detects hardware, chooses GPU or CPU)
 install:
 	@chmod +x install.sh install-gpu.sh install-cpu.sh uninstall.sh
 	sudo ./install.sh
 
-## Installazione forzata modalità FULL (GPU NVIDIA)
+## Forced FULL mode installation (NVIDIA GPU)
 install-gpu:
 	@chmod +x install.sh install-gpu.sh
 	sudo ./install-gpu.sh
 
-## Installazione forzata modalità LITE (CPU-only)
+## Forced LITE mode installation (CPU-only)
 install-cpu:
 	@chmod +x install.sh install-cpu.sh
 	sudo ./install-cpu.sh
 
-## Disinstallazione interattiva
+## Interactive uninstallation
 uninstall:
 	@chmod +x uninstall.sh
 	sudo ./uninstall.sh
