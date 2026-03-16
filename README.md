@@ -428,7 +428,6 @@ This project is distributed under the **Apache 2.0** license. Included component
 - **Ideas & questions:** [GitHub Discussions](https://github.com/fcollova/Private-Corporate-AI/discussions)
 - **Collaboration:** [LinkedIn](https://linkedin.com/in/fcollova)
 
-> For enterprise deployment support or custom development inquiries,
-> reach out via LinkedIn with a brief description of your needs.
+> For inquiries reach out via LinkedIn with a brief description of your needs.
 
 *Built with ❤️ for organizations that take data privacy seriously.*
