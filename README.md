@@ -420,16 +420,15 @@ This project is distributed under the **Apache 2.0** license. Included component
 
 ---
 
-## 🙏 Credits & Documentation
+## Contact
 
-Stack assembled and documented for **maximum corporate privacy**.
+**Francesco Collovà** — Author & Maintainer
 
-Complete technical documentation is available in the [`/doc`](./doc/) folder, including:
-- Operational manual
-- EU AI Act compliance analysis
-- Adoption scenarios
-- Application changelog
+- **Bug reports:** [Open an Issue](https://github.com/fcollova/Private-Corporate-AI/issues)
+- **Ideas & questions:** [GitHub Discussions](https://github.com/fcollova/Private-Corporate-AI/discussions)
+- **Collaboration:** [LinkedIn](https://linkedin.com/in/fcollova)
 
----
+> For enterprise deployment support or custom development inquiries,
+> reach out via LinkedIn with a brief description of your needs.
 
 *Built with ❤️ for organizations that take data privacy seriously.*

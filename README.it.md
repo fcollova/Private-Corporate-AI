@@ -416,16 +416,4 @@ Questo progetto è distribuito sotto licenza **Apache 2.0**. I componenti inclus
 
 ---
 
-## 🙏 Crediti e Documentazione
-
-Stack assembrato e documentato per la **massima privacy aziendale**.
-
-La documentazione tecnica completa è disponibile nella cartella [`/doc`](./doc/), inclusi:
-- Manuale operativo
-- Analisi di conformità EU AI Act
-- Scenari di adozione
-- Changelog dell'applicazione
-
----
-
 *Costruito con ❤️ per le organizzazioni che fanno della privacy dei dati una priorità.*

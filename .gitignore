@@ -6,6 +6,7 @@
 .env
 .env.local
 .env.backup*
+.gemini
 GEMINI.md
 ROADMAP.md
 
