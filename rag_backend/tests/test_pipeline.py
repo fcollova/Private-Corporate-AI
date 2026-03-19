@@ -1,12 +1,11 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from pipeline import get_document_loader, MarkItDownLoader
+from pipeline import get_document_loader, MarkItDownLoader, MarkdownPDFLoader
 
 def test_get_document_loader_pdf():
     loader = get_document_loader("test.pdf", ".pdf")
-    from langchain_community.document_loaders import PyPDFLoader
-    assert isinstance(loader, PyPDFLoader)
+    assert isinstance(loader, MarkdownPDFLoader)
 
 def test_get_document_loader_docx():
     loader = get_document_loader("test.docx", ".docx")
@@ -24,6 +23,19 @@ def test_get_document_loader_pptx():
 def test_get_document_loader_unsupported():
     with pytest.raises(ValueError, match="Formato file non supportato"):
         get_document_loader("test.exe", ".exe")
+
+@patch("pipeline.pymupdf4llm")
+def test_markdown_pdf_loader_load(mock_pymupdf):
+    # Mock pymupdf4llm conversion
+    mock_pymupdf.to_markdown.return_value = "| Col1 | Col2 |\n|---|---|"
+    
+    loader = MarkdownPDFLoader("test.pdf")
+    documents = loader.load()
+    
+    assert len(documents) == 1
+    assert "| Col1 | Col2 |" in documents[0].page_content
+    assert documents[0].metadata["format"] == "markdown"
+    mock_pymupdf.to_markdown.assert_called_once_with("test.pdf")
 
 @patch("pipeline.MarkItDown")
 def test_markitdown_loader_load(mock_markitdown):
@@ -71,5 +83,10 @@ async def test_process_document_xlsx(mock_settings, mock_rag, tmp_path):
         total_indexed = await process_document(str(test_file), "test.xlsx", "doc123")
         
         assert total_indexed > 0
+        
+        # Verifica metadati (prendendo l'ultima chiamata a add_documents)
+        indexed_docs = mock_vector_store.add_documents.call_args[0][0]
+        assert "is_table" in indexed_docs[0].metadata
+        
         mock_rag.ensure_collection_exists.assert_called_once()
         mock_vector_store.add_documents.assert_called()

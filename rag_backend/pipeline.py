@@ -16,11 +16,26 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
+import pymupdf4llm
 from markitdown import MarkItDown
 from langchain.schema import Document
 
 from config import settings, CHUNKS_INDEXED, DOCUMENTS_UPLOADED, QUERY_REQUESTS, QUERY_LATENCY
 from core import rag
+
+class MarkdownPDFLoader:
+    """Caricatore PDF avanzato che estrae testo e tabelle in formato Markdown."""
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+
+    def load(self) -> list[Document]:
+        try:
+            # Estrae il contenuto come Markdown preservando le tabelle
+            md_text = pymupdf4llm.to_markdown(self.file_path)
+            return [Document(page_content=md_text, metadata={"source": self.file_path, "format": "markdown"})]
+        except Exception as e:
+            logger.error(f"Errore durante l'estrazione Markdown da PDF {self.file_path}: {e}")
+            raise
 
 class MarkItDownLoader:
     """Wrapper per caricare documenti usando Microsoft MarkItDown e convertirli in LangChain Documents."""
@@ -53,7 +68,7 @@ RISPOSTA:"""
 
 def get_document_loader(file_path: str, file_ext: str):
     loaders = {
-        ".pdf":  lambda: PyPDFLoader(file_path),
+        ".pdf":  lambda: MarkdownPDFLoader(file_path),
         ".docx": lambda: Docx2txtLoader(file_path),
         ".doc":  lambda: Docx2txtLoader(file_path),
         ".txt":  lambda: TextLoader(file_path, encoding="utf-8"),
@@ -102,11 +117,11 @@ async def process_document(file_path: str, filename: str, doc_id: str, collectio
         raw_documents = loader.load()
         full_doc_text = "\n".join([doc.page_content for doc in raw_documents])
         
-        # Chunking Semantico: Privilegiamo la divisione per paragrafi e sezioni logiche
+        # Chunking Semantico: Proteggiamo le tabelle Markdown con separatori specifici (|)
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap,
-            separators=["\n\n\n", "\n\n", "\n", ". ", "? ", "! ", " ", ""],
+            separators=["\n\n\n", "\n\n", "\n", "\n|", "|", ". ", "? ", "! ", " ", ""],
             add_start_index=True,
         )
         chunks = text_splitter.split_documents(raw_documents)
@@ -117,13 +132,17 @@ async def process_document(file_path: str, filename: str, doc_id: str, collectio
             prefix = await generate_contextual_prefix(full_doc_text, chunk.page_content, filename)
             chunk.page_content = prefix + chunk.page_content
             
+            # Rilevamento presenza tabelle per metadati arricchiti
+            is_table = "|" in chunk.page_content and "---" in chunk.page_content
+
             chunk.metadata.update({
                 "doc_id":      doc_id,
                 "filename":    filename,
                 "file_type":   file_ext,
                 "chunk_index": i,
                 "indexed_at":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "has_context": True if prefix else False
+                "has_context": True if prefix else False,
+                "is_table":    is_table
             })
 
         await rag.ensure_collection_exists(target_collection)

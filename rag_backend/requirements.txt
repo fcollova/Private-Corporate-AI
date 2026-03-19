@@ -32,6 +32,7 @@ qdrant-client==1.12.1              # Client Python Qdrant (Apache 2.0)
 # DOCUMENT LOADERS — Supporto formati documentali
 # -----------------------------------------------------------------------------
 pypdf==5.1.0                       # Parsing PDF (BSD)
+pymupdf4llm==0.0.17                # Estrazione PDF in Markdown con tabelle (AGPL)
 python-docx==1.1.2                 # Parsing DOCX Word (MIT)
 openpyxl==3.1.5                    # Parsing XLSX Excel (MIT)
 python-pptx==1.0.2                 # Parsing PPTX PowerPoint (MIT)
