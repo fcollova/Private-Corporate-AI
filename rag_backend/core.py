@@ -43,7 +43,6 @@ class RagComponents:
             temperature=settings.llm_temperature,
             num_ctx=settings.llm_context_window,
             timeout=settings.effective_timeout,
-            **({"mirostat": 0} if settings.is_cpu_mode else {}),
         )
         llm.invoke("OK")
         return llm

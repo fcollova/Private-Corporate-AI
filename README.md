@@ -134,7 +134,7 @@ Results are merged using **Reciprocal Rank Fusion (RRF)**, ensuring **30–40% s
 | `corporate_ai_nginx` | `nginx:1.27.4-alpine` | SSL/TLS reverse proxy, rate limiting, security headers | BSD |
 | `corporate_ai_webui` | `ghcr.io/open-webui/open-webui:v0.8.8` | Web chat interface, conversation management | MIT |
 | `corporate_ai_console` | `node:20-alpine` | **Document Management Console** (React + Vite) | MIT |
-| `corporate_ai_rag` | *Custom build* | FastAPI + LangChain, RAG pipeline, OpenAI-compatible API | Apache 2.0 |
+| `corporate_ai_rag` | *Custom build* | FastAPI + LangChain, RAG pipeline, Advanced PDF Table Extraction (**PyMuPDF4LLM**), OpenAI-compatible API | Apache 2.0 |
 | `corporate_ai_ollama` | `ollama/ollama:0.17.7` | Local LLM runtime, CPU and NVIDIA GPU support | MIT |
 | `corporate_ai_qdrant` | `qdrant/qdrant:v1.17.0` | Vector database, Hybrid Search (Dense + Sparse/BM25) with RRF | Apache 2.0 |
 | `corporate_ai_ollama_init` | `ollama/ollama` | One-shot init: downloads LLM and embedding model on first startup | MIT |
