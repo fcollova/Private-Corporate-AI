@@ -431,3 +431,8 @@ This project is distributed under the **Apache 2.0** license. Included component
 > For inquiries reach out via LinkedIn with a brief description of your needs.
 
 *Built with ❤️ for organizations that take data privacy seriously.*
+
+*Personal Project Disclaimer
+This project is developed and maintained independently by Francesco Collovà as a personal initiative, in personal time and using exclusively personal resources.
+It is not affiliated with, sponsored by, or endorsed by any current or former employer. The views, architectural choices, and technical decisions expressed in this project reflect solely the author's personal expertise and do not represent the position of any organization the author is or has been associated with.
+No proprietary information, confidential data, or intellectual property belonging to any employer has been used in the development of this project.*
