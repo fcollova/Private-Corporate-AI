@@ -8,6 +8,7 @@
 
 import os
 import uuid
+import time
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
@@ -18,6 +19,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from config import settings
 from core import rag
 from pipeline import process_document
+from state import state_manager
 
 router = APIRouter(prefix="/documents", tags=["Documenti"])
 
@@ -28,6 +30,7 @@ async def upload_document(
     collection_name: Optional[str] = None,
 ):
     doc_id = str(uuid.uuid4())
+    state_manager.add_task(doc_id, file.filename)
     safe_filename = f"{doc_id}_{file.filename}"
     file_path = os.path.join(settings.upload_dir, safe_filename)
 
@@ -56,8 +59,23 @@ async def list_documents(collection_name: Optional[str] = None):
                 "file_type": meta.get("file_type"),
                 "chunks_count": 0,
                 "indexed_at": meta.get("indexed_at"),
+                "status": "indexed"
             }
         docs_map[doc_id]["chunks_count"] += 1
+
+    # Aggiunge i documenti in elaborazione dallo state_manager
+    active_tasks = state_manager.get_all()
+    for doc_id, task in active_tasks.items():
+        if doc_id not in docs_map:
+            docs_map[doc_id] = {
+                "doc_id": doc_id,
+                "filename": task["filename"],
+                "file_type": f".{task['filename'].split('.')[-1]}" if "." in task["filename"] else "unknown",
+                "chunks_count": 0,
+                "indexed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(task["started_at"])),
+                "status": task["status"],
+                "error": task.get("error")
+            }
         
     return {"documents": sorted(docs_map.values(), key=lambda x: x["indexed_at"] or "", reverse=True)}
 
@@ -97,6 +115,7 @@ async def reindex_document(doc_id: str, background_tasks: BackgroundTasks, colle
     
     if not os.path.exists(file_path): raise HTTPException(410, "File non presente sul server")
     
+    state_manager.add_task(doc_id, filename)
     client.delete(collection_name=target_collection, points_selector=filter_doc)
     background_tasks.add_task(process_document, file_path, filename, doc_id, target_collection)
     return {"reindexing": True, "doc_id": doc_id}

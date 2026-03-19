@@ -6,8 +6,9 @@
    DESCRIPTION: Main React application component for the Document Console.
    ============================================================================= */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from './api/ragClient';
+import DocTable from './components/DocTable';
 
 const App = () => {
   const [selectedDomain, setSelectedDomain] = useState('corporate_docs');
@@ -21,8 +22,10 @@ const App = () => {
     theme_color: '#3b82f6'
   });
 
+  const pollingRef = useRef(null);
+
   const fetchData = async () => {
-    setLoading(true);
+    // Non settiamo loading a true durante il polling per non disturbare l'utente
     try {
       const info = await api.clientInfo();
       if (info && info.company) setClientInfo(info);
@@ -31,14 +34,27 @@ const App = () => {
       setDomains(Array.isArray(doms) ? doms : []);
 
       const response = await api.listDocs(selectedDomain);
-      setDocs(Array.isArray(response?.documents) ? response.documents : []);
+      const newDocs = Array.isArray(response?.documents) ? response.documents : [];
+      setDocs(newDocs);
+
+      // Se ci sono documenti in elaborazione, attiviamo il polling
+      const hasProcessing = newDocs.some(d => d.status === 'processing');
+      if (hasProcessing && !pollingRef.current) {
+        pollingRef.current = setInterval(fetchData, 3000);
+      } else if (!hasProcessing && pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     } catch (e) { 
       console.error("Errore fetch dati:", e); 
     }
-    setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [selectedDomain, refresh]);
+  useEffect(() => { 
+    setLoading(true);
+    fetchData().then(() => setLoading(false));
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, [selectedDomain, refresh]);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -46,12 +62,34 @@ const App = () => {
     setUploading(true);
     try {
       await api.uploadDoc(file, selectedDomain);
-      alert("Upload avviato con successo. Il documento apparirà tra pochi secondi.");
-      setTimeout(fetchData, 3000); 
+      fetchData(); // Aggiorna subito per mostrare lo stato "processing"
     } catch (e) {
       alert("Errore durante l'upload.");
     }
     setUploading(false);
+  };
+
+  const handleDelete = async (id) => {
+    if(!confirm("Eliminare definitivamente il documento?")) return;
+    try {
+      await api.deleteDoc(id, selectedDomain);
+      fetchData();
+    } catch (e) { alert("Errore eliminazione."); }
+  };
+
+  const handleReindex = async (id) => {
+    try {
+      await api.reindexDoc(id, selectedDomain);
+      fetchData();
+    } catch (e) { alert("Errore re-indexing."); }
+  };
+
+  const handleMove = (doc) => {
+    const newDomain = prompt("Inserisci il nome del dominio di destinazione:", selectedDomain);
+    if (!newDomain || newDomain === selectedDomain) return;
+    api.moveDoc(doc.doc_id, { target_collection: newDomain })
+      .then(() => fetchData())
+      .catch(() => alert("Errore durante lo spostamento."));
   };
 
   const handleCreateDomain = async () => {
@@ -63,13 +101,6 @@ const App = () => {
     } catch (e) {
       alert("Errore creazione dominio. Verifica che il nome non contenga spazi o caratteri speciali.");
     }
-  };
-
-  const getFileIcon = (type) => {
-    if (type?.includes('pdf')) return '📕';
-    if (type?.includes('doc')) return '📘';
-    if (type?.includes('txt') || type?.includes('md')) return '📄';
-    return '📁';
   };
 
   const primaryColor = clientInfo?.theme_color || '#3b82f6';
@@ -179,78 +210,20 @@ const App = () => {
           </div>
 
           <div style={{ 
-            background: '#1e293b', 
             borderRadius: '12px', 
-            border: '1px solid #334155',
             overflow: 'hidden',
             boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ background: '#334155', color: '#cbd5e1', textAlign: 'left' }}>
-                  <th style={{ padding: '12px 20px' }}>Documento</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'center' }}>Frammenti (Chunk)</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'right' }}>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!docs || docs.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                      Nessun documento trovato in questo dominio. Carica un file per iniziare.
-                    </td>
-                  </tr>
-                ) : (
-                  docs.map(doc => (
-                    <tr key={doc.doc_id} style={{ borderBottom: '1px solid #334155' }}>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '1.5rem' }}>{getFileIcon(doc.file_type)}</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#f1f5f9' }}>{doc.filename || 'Senza nome'}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>ID: {doc.doc_id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                        <span style={{ 
-                          background: '#0f172a', 
-                          padding: '4px 10px', 
-                          borderRadius: '12px',
-                          fontSize: '0.8rem',
-                          border: '1px solid #334155'
-                        }}>
-                          {doc.chunks_count} chunks
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button 
-                            onClick={() => api.reindexDoc(doc.doc_id, selectedDomain).then(() => { alert("Re-indicizzazione avviata."); fetchData(); })}
-                            title="Rigenera embedding"
-                            style={{ 
-                              background: 'transparent', border: '1px solid #475569', color: '#cbd5e1', 
-                              padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
-                            }}
-                          >
-                            Re-index
-                          </button>
-                          <button 
-                            onClick={() => { if(confirm("Eliminare definitivamente il documento?")) api.deleteDoc(doc.doc_id, selectedDomain).then(() => fetchData()); }}
-                            style={{ 
-                              background: '#7f1d1d', border: 'none', color: '#fecaca', 
-                              padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
-                            }}
-                          >
-                            Elimina
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            {loading && docs.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Caricamento documenti...</div>
+            ) : (
+              <DocTable 
+                docs={docs} 
+                onAction={handleMove}
+                onDelete={handleDelete}
+                onReindex={handleReindex}
+              />
+            )}
           </div>
         </main>
       </div>

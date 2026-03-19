@@ -22,6 +22,7 @@ from langchain.schema import Document
 
 from config import settings, CHUNKS_INDEXED, DOCUMENTS_UPLOADED, QUERY_REQUESTS, QUERY_LATENCY
 from core import rag
+from state import state_manager
 
 class MarkdownPDFLoader:
     """Caricatore PDF avanzato che estrae testo e tabelle in formato Markdown."""
@@ -157,10 +158,11 @@ async def process_document(file_path: str, filename: str, doc_id: str, collectio
 
         CHUNKS_INDEXED.inc(total_indexed)
         DOCUMENTS_UPLOADED.labels(file_type=file_ext).inc()
+        state_manager.complete_task(doc_id)
         return total_indexed
     except Exception as e:
         logger.error(f"Errore irreversibile nell'indicizzazione di {filename}: {e}")
-        # In una versione più avanzata, potremmo aggiornare uno stato nel DB per il doc_id
+        state_manager.fail_task(doc_id, str(e))
         return 0
 
 async def rag_query(question: str, collection_name: Optional[str] = None, top_k: Optional[int] = None, model_name: Optional[str] = None) -> dict:

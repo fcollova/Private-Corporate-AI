@@ -336,7 +336,11 @@ Il RAG backend espone endpoint avanzati per la gestione dei domini. Documentazio
 | `POST` | `/api/documents/{id}/reindex` | Forza la re-indicizzazione di un file |
 | `POST` | `/api/chat` | Query RAG nativa con fonti citate |
 
-**Formati documento supportati:** PDF, DOCX, TXT, MD, XLSX, PPTX
+### Monitoraggio in tempo reale
+La console ora supporta il monitoraggio in tempo reale dell'elaborazione dei documenti:
+- **Tracciamento Stato**: Indicatori visivi per gli stati *In elaborazione*, *Indicizzato* ed *Errore*.
+- **Polling Automatico**: L'interfaccia si aggiorna automaticamente mentre i documenti vengono indicizzati.
+- **Icone Dinamiche**: Identificazione visiva immediata del tipo di file (.pdf, .docx, .xlsx, .pptx, .md).
 
 ---
 
