@@ -340,7 +340,18 @@ The RAG backend exposes advanced endpoints for domain management. Full interacti
 | `POST` | `/api/documents/{id}/reindex` | Force re-indexing of a file |
 | `POST` | `/api/chat` | Native RAG query with cited sources |
 
-**Supported document formats:** PDF, DOCX, TXT, MD *(XLSX and PPTX support planned in Phase 1)*
+**Supported document formats:** PDF, DOCX, TXT, MD, XLSX, PPTX
+
+---
+
+## 🧪 Testing
+
+The RAG Backend includes a unit test suite to ensure the integrity of the document processing pipeline.
+
+```bash
+# Run tests (requires pytest and pytest-asyncio)
+pytest rag_backend/tests
+```
 
 ---
 
@@ -383,7 +394,7 @@ The system prompt is stored in `rag_backend/system_prompt.txt` and controls how 
 > This is an actively developed project. The roadmap is driven by **EU AI Act compliance requirements** (deadline: August 2026) and enterprise integration needs.
 
 ### Phase 1 — Compliance & Quick Wins *(Month 1)*
-- [ ] XLSX and PPTX document loader support
+- [x] XLSX and PPTX document loader support (via Microsoft MarkItDown)
 - [ ] AI Transparency Disclaimer in Open WebUI (Art. 4 & 50 AI Act)
 - [ ] AI Literacy onboarding module for end users
 - [ ] Docker log retention policy (6-month persistence, Art. 12 AI Act)

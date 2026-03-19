@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- WIP: XLSX and PPTX document loader support.
+- **XLSX and PPTX support**: Full integration of Microsoft MarkItDown for Office document processing.
+- **Unit Testing Suite**: Comprehensive test suite for RAG Backend pipeline (`rag_backend/tests/`).
 - WIP: OCR pipeline via Tesseract for scanned PDFs and images.
 
 ## [0.1.0] - 2026-03-14

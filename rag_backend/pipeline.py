@@ -16,9 +16,25 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
+from markitdown import MarkItDown
+from langchain.schema import Document
 
 from config import settings, CHUNKS_INDEXED, DOCUMENTS_UPLOADED, QUERY_REQUESTS, QUERY_LATENCY
 from core import rag
+
+class MarkItDownLoader:
+    """Wrapper per caricare documenti usando Microsoft MarkItDown e convertirli in LangChain Documents."""
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self.md = MarkItDown()
+
+    def load(self) -> list[Document]:
+        try:
+            result = self.md.convert(self.file_path)
+            return [Document(page_content=result.text_content, metadata={"source": self.file_path})]
+        except Exception as e:
+            logger.error(f"Errore durante la conversione MarkItDown per {self.file_path}: {e}")
+            raise
 
 def build_rag_prompt() -> PromptTemplate:
     system_prompt_path = Path("/app/system_prompt.txt")
@@ -42,8 +58,13 @@ def get_document_loader(file_path: str, file_ext: str):
         ".doc":  lambda: Docx2txtLoader(file_path),
         ".txt":  lambda: TextLoader(file_path, encoding="utf-8"),
         ".md":   lambda: TextLoader(file_path, encoding="utf-8"),
+        ".xlsx": lambda: MarkItDownLoader(file_path),
+        ".pptx": lambda: MarkItDownLoader(file_path),
     }
-    return loaders[file_ext.lower()]()
+    ext = file_ext.lower()
+    if ext not in loaders:
+        raise ValueError(f"Formato file non supportato: {ext}")
+    return loaders[ext]()
 
 async def generate_contextual_prefix(full_text: str, chunk_content: str, filename: str) -> str:
     """
@@ -73,50 +94,55 @@ RISPOSTA:"""
         return ""
 
 async def process_document(file_path: str, filename: str, doc_id: str, collection_name: Optional[str] = None) -> int:
-    file_ext = Path(filename).suffix.lower()
-    target_collection = collection_name or settings.qdrant_collection_name
-    
-    loader = get_document_loader(file_path, file_ext)
-    raw_documents = loader.load()
-    full_doc_text = "\n".join([doc.page_content for doc in raw_documents])
-    
-    # Chunking Semantico: Privilegiamo la divisione per paragrafi e sezioni logiche
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=settings.chunk_size,
-        chunk_overlap=settings.chunk_overlap,
-        separators=["\n\n\n", "\n\n", "\n", ". ", "? ", "! ", " ", ""],
-        add_start_index=True,
-    )
-    chunks = text_splitter.split_documents(raw_documents)
-
-    # Applicazione Contextual Retrieval
-    logger.info(f"Generazione contesto per {len(chunks)} chunk di {filename}...")
-    for i, chunk in enumerate(chunks):
-        prefix = await generate_contextual_prefix(full_doc_text, chunk.page_content, filename)
-        chunk.page_content = prefix + chunk.page_content
+    try:
+        file_ext = Path(filename).suffix.lower()
+        target_collection = collection_name or settings.qdrant_collection_name
         
-        chunk.metadata.update({
-            "doc_id":      doc_id,
-            "filename":    filename,
-            "file_type":   file_ext,
-            "chunk_index": i,
-            "indexed_at":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "has_context": True if prefix else False
-        })
+        loader = get_document_loader(file_path, file_ext)
+        raw_documents = loader.load()
+        full_doc_text = "\n".join([doc.page_content for doc in raw_documents])
+        
+        # Chunking Semantico: Privilegiamo la divisione per paragrafi e sezioni logiche
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+            separators=["\n\n\n", "\n\n", "\n", ". ", "? ", "! ", " ", ""],
+            add_start_index=True,
+        )
+        chunks = text_splitter.split_documents(raw_documents)
 
-    await rag.ensure_collection_exists(target_collection)
-    vector_store = rag.get_vector_store(target_collection)
+        # Applicazione Contextual Retrieval
+        logger.info(f"Generazione contesto per {len(chunks)} chunk di {filename}...")
+        for i, chunk in enumerate(chunks):
+            prefix = await generate_contextual_prefix(full_doc_text, chunk.page_content, filename)
+            chunk.page_content = prefix + chunk.page_content
+            
+            chunk.metadata.update({
+                "doc_id":      doc_id,
+                "filename":    filename,
+                "file_type":   file_ext,
+                "chunk_index": i,
+                "indexed_at":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "has_context": True if prefix else False
+            })
 
-    batch_size = 50
-    total_indexed = 0
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i : i + batch_size]
-        await asyncio.to_thread(vector_store.add_documents, batch)
-        total_indexed += len(batch)
+        await rag.ensure_collection_exists(target_collection)
+        vector_store = rag.get_vector_store(target_collection)
 
-    CHUNKS_INDEXED.inc(total_indexed)
-    DOCUMENTS_UPLOADED.labels(file_type=file_ext).inc()
-    return total_indexed
+        batch_size = 50
+        total_indexed = 0
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i : i + batch_size]
+            await asyncio.to_thread(vector_store.add_documents, batch)
+            total_indexed += len(batch)
+
+        CHUNKS_INDEXED.inc(total_indexed)
+        DOCUMENTS_UPLOADED.labels(file_type=file_ext).inc()
+        return total_indexed
+    except Exception as e:
+        logger.error(f"Errore irreversibile nell'indicizzazione di {filename}: {e}")
+        # In una versione più avanzata, potremmo aggiornare uno stato nel DB per il doc_id
+        return 0
 
 async def rag_query(question: str, collection_name: Optional[str] = None, top_k: Optional[int] = None, model_name: Optional[str] = None) -> dict:
     start_time = time.time()
