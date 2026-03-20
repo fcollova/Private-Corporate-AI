@@ -174,7 +174,7 @@ Installation is fully automated via an interactive script that configures the en
 ### 1. Clone & Run the Installer
 
 ```bash
-git clone https://github.com/fcollova/private-corporate-ai.git
+git clone https://github.com/fcollova/Private-Corporate-AI.git
 cd private-corporate-ai
 chmod +x install.sh
 sudo ./install.sh
