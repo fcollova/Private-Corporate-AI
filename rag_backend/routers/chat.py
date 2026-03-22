@@ -9,9 +9,11 @@
 import uuid
 import time
 import httpx
+import json
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from schemas import ChatRequest, ChatResponse, OpenAIChatRequest
-from pipeline import rag_query
+from pipeline import rag_query, rag_query_stream
 from config import settings
 
 router = APIRouter(tags=["Chat"])
@@ -25,6 +27,20 @@ async def chat_with_docs(request: ChatRequest):
         model_name=request.model,
     )
     return ChatResponse(**result)
+
+@router.post("/chat/stream")
+async def chat_with_docs_stream(request: ChatRequest):
+    """Esegue una query RAG con streaming SSE."""
+    async def stream_generator():
+        async for chunk in rag_query_stream(
+            question=request.question,
+            collection_name=request.collection_name,
+            top_k=request.top_k,
+            model_name=request.model,
+        ):
+            yield f"data: {json.dumps(chunk)}\n\n"
+        
+    return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
 @router.post("/v1/chat/completions")
 async def openai_compatible_chat(request: OpenAIChatRequest):

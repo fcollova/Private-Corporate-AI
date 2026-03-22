@@ -6,3 +6,5 @@ docker-compose.yaml
 docker-compose.lite.yaml
 --env-file
 .env
+--env-file
+/home/francesco/private-corporate-ai/versions.env

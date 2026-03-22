@@ -11,6 +11,8 @@ from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 from langchain_ollama import OllamaLLM, OllamaEmbeddings
 from langchain_qdrant import QdrantVectorStore, RetrievalMode
+from langchain.embeddings import CacheBackedEmbeddings
+from langchain.storage import RedisStore
 
 # Importazione robusta per FastEmbedSparseEmbeddings
 try:
@@ -49,12 +51,29 @@ class RagComponents:
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=2, min=4, max=30), reraise=True)
     def _init_embeddings(self) -> OllamaEmbeddings:
-        embeddings = OllamaEmbeddings(
+        base_embeddings = OllamaEmbeddings(
             model=settings.embedding_model,
             base_url=settings.ollama_base_url,
         )
-        embeddings.embed_query("test")
-        return embeddings
+        
+        if settings.embedding_cache_enabled:
+            try:
+                logger.info(f"Abilitazione cache embedding su Redis: {settings.redis_url}")
+                # Store per i vettori su Redis
+                store = RedisStore(redis_url=settings.redis_url, namespace="embeddings")
+                cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
+                    underlying_embeddings=base_embeddings,
+                    document_embedding_cache=store,
+                    namespace=base_embeddings.model
+                )
+                # Verifica connettività (opzionale)
+                cached_embeddings.embed_query("test-cache")
+                return cached_embeddings
+            except Exception as e:
+                logger.error(f"Errore inizializzazione cache Redis: {e}. Procedo senza cache.")
+        
+        base_embeddings.embed_query("test")
+        return base_embeddings
 
     def _init_sparse_embeddings(self) -> Optional[object]:
         if FastEmbedSparseEmbeddings is None:

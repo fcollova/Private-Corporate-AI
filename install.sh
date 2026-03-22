@@ -326,6 +326,14 @@ select_deploy_mode() {
 select_llm_model() {
     log_section "Selezione Modello LLM"
 
+    # Se un modello è stato pre-configurato (da wrapper install-gpu/cpu.sh), saltiamo la scelta
+    if [[ -n "${PRECONFIGURED_MODEL:-}" ]]; then
+        LLM_MODEL="${PRECONFIGURED_MODEL}"
+        EMBEDDING_MODEL="nomic-embed-text"
+        log_ok "Uso modello pre-configurato: ${LLM_MODEL}"
+        return
+    fi
+
     if [[ "${DEPLOY_MODE}" == "gpu" ]]; then
         echo -e "  ${BOLD}Modelli disponibili per modalità GPU:${NC}"
         echo ""
@@ -476,8 +484,20 @@ configure_advanced() {
         read -r v; NGINX_HTTPS_PORT="${v:-${NGINX_HTTPS_PORT}}"
 
         if [[ "${DEPLOY_MODE}" == "cpu" ]]; then
-            echo -ne "  Thread CPU per Ollama (0=auto, consigliato=${OLLAMA_CPU_THREADS}) [${OLLAMA_CPU_THREADS}]: "
-            read -r v; OLLAMA_CPU_THREADS="${v:-${OLLAMA_CPU_THREADS}}"
+            # Se pre-configurato da wrapper (es: ./install-cpu.sh --threads 4)
+            if [[ -n "${PRECONFIGURED_THREADS:-}" ]]; then
+                OLLAMA_CPU_THREADS="${PRECONFIGURED_THREADS}"
+                log_ok "Uso thread CPU pre-configurati: ${OLLAMA_CPU_THREADS}"
+            else
+                echo -ne "  Thread CPU per Ollama (0=auto, consigliato=${OLLAMA_CPU_THREADS}) [${OLLAMA_CPU_THREADS}]: "
+                read -r v; OLLAMA_CPU_THREADS="${v:-${OLLAMA_CPU_THREADS}}"
+            fi
+        fi
+    else
+        # Se non siamo in modalità avanzata ma abbiamo thread pre-configurati, applicali
+        if [[ "${DEPLOY_MODE}" == "cpu" ]] && [[ -n "${PRECONFIGURED_THREADS:-}" ]]; then
+            OLLAMA_CPU_THREADS="${PRECONFIGURED_THREADS}"
+            log_ok "Uso thread CPU pre-configurati: ${OLLAMA_CPU_THREADS}"
         fi
     fi
 
@@ -715,7 +735,21 @@ generate_env_file() {
     local QDRANT_API_KEY; QDRANT_API_KEY=$(generate_secret)
     local WEBUI_SECRET_KEY; WEBUI_SECRET_KEY=$(generate_secret)
 
+    # Parametri performance dinamici basati sui core CPU
+    # WEB_WORKERS: tra 2 e 8 (un worker ogni 2 core)
+    local calc_workers=$(( CPU_CORES / 2 ))
+    [[ "${calc_workers}" -lt 2 ]] && calc_workers=2
+    [[ "${calc_workers}" -gt 8 ]] && calc_workers=8
+    local FINAL_WEB_WORKERS="${WEB_WORKERS:-${calc_workers}}"
+
+    # OLLAMA_NUM_PARALLEL: tra 1 e 4 (un worker ogni 4 core durante ingestion)
+    local calc_parallel=$(( CPU_CORES / 4 ))
+    [[ "${calc_parallel}" -lt 1 ]] && calc_parallel=1
+    [[ "${calc_parallel}" -gt 4 ]] && calc_parallel=4
+    local FINAL_OLLAMA_PARALLEL="${OLLAMA_NUM_PARALLEL:-${calc_parallel}}"
+
     log_info "Generazione credenziali sicure..."
+    log_info "Ottimizzazione performance: ${FINAL_WEB_WORKERS} workers, ${FINAL_OLLAMA_PARALLEL} parallel ingestion"
 
     cat > "${ENV_FILE}" << ENVEOF
 # =============================================================================
@@ -748,6 +782,16 @@ QDRANT_API_KEY='${QDRANT_API_KEY}'
 CHUNK_SIZE='${CHUNK_SIZE}'
 CHUNK_OVERLAP='${CHUNK_OVERLAP}'
 TOP_K_RESULTS='${TOP_K_RESULTS}'
+HYBRID_SEARCH_ENABLED='true'
+
+# Database SQL Metadata (SQLite persistente)
+DATABASE_URL='sqlite+aiosqlite:////app/data/rag.db'
+
+# --- PERFORMANCE & SCALABILITÀ (Fase 2) ---
+WEB_WORKERS='${FINAL_WEB_WORKERS}'
+OLLAMA_NUM_PARALLEL='${FINAL_OLLAMA_PARALLEL}'
+EMBEDDING_CACHE_ENABLED='true'
+REDIS_URL='redis://redis:6379/0'
 
 # Open WebUI
 WEBUI_SECRET_KEY='${WEBUI_SECRET_KEY}'
@@ -763,6 +807,7 @@ NGINX_HTTPS_PORT='${NGINX_HTTPS_PORT}'
 TZ='Europe/Rome'
 LOG_LEVEL='INFO'
 UPLOAD_DIR='/app/uploads'
+DATA_DIR='/app/data'
 
 # =============================================================================
 # PROFILO CLIENTE — Generato da install.sh
@@ -874,14 +919,19 @@ patch_compose_for_cpu() {
 # NOTA: usare sempre "${COMPOSE_CMD[@]}" (con le virgolette) per espandere
 #       correttamente un array che contiene flag con spazi nel valore.
 build_compose_cmd() {
+    local versions_file="${SCRIPT_DIR}/versions.env"
+    local env_flag=()
+    [[ -f "${versions_file}" ]] && env_flag=(--env-file "${versions_file}")
+
     if [[ "${DEPLOY_MODE}" == "gpu" ]]; then
-        COMPOSE_CMD=(docker compose --env-file .env)
+        COMPOSE_CMD=(docker compose --env-file .env "${env_flag[@]}")
         COMPOSE_FILES="docker-compose.yaml"
     else
         COMPOSE_CMD=(docker compose
             -f docker-compose.yaml
             -f docker-compose.lite.yaml
-            --env-file .env)
+            --env-file .env
+            "${env_flag[@]}")
         COMPOSE_FILES="docker-compose.yaml + docker-compose.lite.yaml"
     fi
 }
@@ -930,24 +980,50 @@ wait_for_healthy() {
 
     local elapsed=0
     local check_interval=10
-    local services=("corporate_ai_ollama" "corporate_ai_qdrant" "corporate_ai_rag")
+    # Monitoriamo tutti i servizi core dello stack
+    local services=(
+        "corporate_ai_ollama" 
+        "corporate_ai_qdrant" 
+        "corporate_ai_rag" 
+        "corporate_ai_webui" 
+        "corporate_ai_nginx"
+    )
 
     while [[ "${elapsed}" -lt "${HEALTHCHECK_TIMEOUT}" ]]; do
-        local all_healthy=true
+        local all_ready=true
 
         for svc in "${services[@]}"; do
-            local status
-            status=$(docker inspect --format='{{.State.Health.Status}}' "${svc}" 2>/dev/null || echo "not_found")
-            if [[ "${status}" != "healthy" ]]; then
-                all_healthy=false
-                printf "\r  ${YELLOW}⏳${NC}  Attesa servizi... [${elapsed}s/${HEALTHCHECK_TIMEOUT}s] | ${svc}: ${status}"
+            # Verifica se il container esiste e se ha un healthcheck configurato
+            local has_health
+            has_health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no_healthcheck{{end}}' "${svc}" 2>/dev/null || echo "not_found")
+            
+            local status="unknown"
+            if [[ "${has_health}" == "no_healthcheck" ]]; then
+                # Se non ha healthcheck, verifichiamo solo se è in esecuzione
+                local is_running
+                is_running=$(docker inspect --format='{{.State.Running}}' "${svc}" 2>/dev/null || echo "false")
+                if [[ "${is_running}" == "true" ]]; then
+                    status="running"
+                else
+                    status="stopped"
+                    all_ready=false
+                fi
+            elif [[ "${has_health}" == "healthy" ]]; then
+                status="healthy"
+            else
+                status="${has_health}"
+                all_ready=false
+            fi
+
+            if [[ "${all_ready}" == "false" ]]; then
+                printf "\r  ${YELLOW}⏳${NC}  Attesa servizi... [${elapsed}s/${HEALTHCHECK_TIMEOUT}s] | ${svc}: ${status}    "
                 break
             fi
         done
 
-        if [[ "${all_healthy}" == "true" ]]; then
+        if [[ "${all_ready}" == "true" ]]; then
             echo ""
-            log_ok "Tutti i servizi core sono healthy!"
+            log_ok "Tutti i servizi core sono pronti e operativi!"
             break
         fi
 
@@ -1266,6 +1342,18 @@ apply_client_branding() {
   padding: 10px;
   font-weight: bold;
 }
+/* AI Transparency Disclosure (EU AI Act Art. 50) */
+main::after {
+  content: "⚠️ Interazione con sistema di Intelligenza Artificiale locale. Le risposte sono generate automaticamente e possono contenere errori.";
+  display: block;
+  text-align: center;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  padding: 10px;
+  opacity: 0.8;
+  border-top: 1px solid #334155;
+  margin-top: auto;
+}
 CSSEOF
     log_ok "CSS tema generato: branding/theme.css"
 
@@ -1437,6 +1525,10 @@ main() {
             CHUNK_OVERLAP=$(grep "^CHUNK_OVERLAP=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
             TOP_K_RESULTS=$(grep "^TOP_K_RESULTS=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
             
+            # Performance (Phase 2)
+            WEB_WORKERS=$(grep "^WEB_WORKERS=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+            OLLAMA_NUM_PARALLEL=$(grep "^OLLAMA_NUM_PARALLEL=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
+
             # WebUI & Nginx
             WEBUI_AUTH=$(grep "^WEBUI_AUTH=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
             NGINX_HOST=$(grep "^NGINX_HOST=" "${ENV_FILE}" | cut -d= -f2- | tr -d "'\"")
@@ -1453,6 +1545,8 @@ main() {
             CHUNK_SIZE="${CHUNK_SIZE:-1000}"
             CHUNK_OVERLAP="${CHUNK_OVERLAP:-200}"
             TOP_K_RESULTS="${TOP_K_RESULTS:-5}"
+            WEB_WORKERS="${WEB_WORKERS:-2}"
+            OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-2}"
             WEBUI_AUTH="${WEBUI_AUTH:-true}"
             NGINX_HOST="${NGINX_HOST:-localhost}"
             NGINX_HTTP_PORT="${NGINX_HTTP_PORT:-80}"

@@ -1,6 +1,6 @@
   ╔═══════════════════════════════════════════════════════════╗
   ║                                                           ║
-  ║         PRIVATE CORPORATE AI  —  Azienda S.r.l.
+  ║         PRIVATE CORPORATE AI  —  ACME
   ║         Stack Self-Hosted · Generale
   ║                                                           ║
   ║   Ollama  •  Qdrant  •  FastAPI  •  Open WebUI  •  Nginx  ║

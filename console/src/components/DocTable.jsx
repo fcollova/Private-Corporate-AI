@@ -18,18 +18,38 @@ const getFileIcon = (ext) => {
   return { icon: '📄', color: '#94a3b8' };
 };
 
-const StatusBadge = ({ status, error }) => {
+const StatusBadge = ({ status, error, progress }) => {
   const styles = {
     padding: '2px 8px',
     borderRadius: '12px',
     fontSize: '0.75rem',
     fontWeight: 'bold',
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
+    display: 'inline-block',
+    marginBottom: '4px'
   };
 
-  if (status === 'processing') return <span style={{ ...styles, background: '#fbbf24', color: '#000' }}>Elaborazione...</span>;
-  if (status === 'error') return <span title={error} style={{ ...styles, background: '#ef4444', color: '#fff' }}>Errore</span>;
-  return <span style={{ ...styles, background: '#10b981', color: '#fff' }}>Indicizzato</span>;
+  const statusMap = {
+    'queued':          { label: 'In coda', color: '#94a3b8', bg: '#334155' },
+    'extracting':      { label: 'Estrazione', color: '#60a5fa', bg: '#1e3a8a' },
+    'contextualizing': { label: 'Contesto', color: '#fbbf24', bg: '#78350f' },
+    'embedding':       { label: 'Indicizzazione', color: '#c084fc', bg: '#581c87' },
+    'completed':       { label: 'Pronto', color: '#10b981', bg: '#064e3b' },
+    'failed':          { label: 'Errore', color: '#ef4444', bg: '#7f1d1d' }
+  };
+
+  const s = statusMap[status] || { label: status, color: '#fff', bg: '#334155' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '120px' }}>
+      <span title={error} style={{ ...styles, background: s.bg, color: s.color }}>{s.label}</span>
+      {status !== 'completed' && status !== 'failed' && (
+        <div style={{ width: '100%', height: '4px', background: '#334155', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{ width: `${progress}%`, height: '100%', background: s.color, transition: 'width 0.3s' }}></div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const DocTable = ({ docs, onAction, onDelete, onReindex }) => (
@@ -40,7 +60,7 @@ const DocTable = ({ docs, onAction, onDelete, onReindex }) => (
           <th style={{ padding: '0.5rem' }}>File</th>
           <th style={{ padding: '0.5rem' }}>Tipo</th>
           <th style={{ padding: '0.5rem' }}>Stato</th>
-          <th style={{ padding: '0.5rem' }}>Chunk</th>
+          <th style={{ padding: '0.5rem' }}>Dimensione</th>
           <th style={{ padding: '0.5rem' }}>Data</th>
           <th style={{ padding: '0.5rem' }}>Azioni</th>
         </tr>
@@ -48,21 +68,21 @@ const DocTable = ({ docs, onAction, onDelete, onReindex }) => (
       <tbody>
         {docs.map(doc => {
           const { icon, color } = getFileIcon(doc.file_type);
-          const isProcessing = doc.status === 'processing';
+          const isProcessing = ['queued', 'extracting', 'contextualizing', 'embedding'].includes(doc.status);
           
           return (
-            <tr key={doc.doc_id} style={{ borderBottom: '1px solid #334155', opacity: isProcessing ? 0.7 : 1 }}>
+            <tr key={doc.doc_id} style={{ borderBottom: '1px solid #334155', opacity: isProcessing ? 0.8 : 1 }}>
               <td style={{ padding: '0.5rem', display: 'flex', alignItems: 'center' }}>
                 <span style={{ marginRight: '8px', fontSize: '1.2rem', color }}>{icon}</span>
                 {doc.filename}
               </td>
               <td style={{ padding: '0.5rem' }}>{doc.file_type}</td>
               <td style={{ padding: '0.5rem' }}>
-                <StatusBadge status={doc.status} error={doc.error} />
+                <StatusBadge status={doc.status} error={doc.error} progress={doc.progress} />
               </td>
-              <td style={{ padding: '0.5rem' }}>{doc.chunks_count}</td>
+              <td style={{ padding: '0.5rem' }}>{(doc.size_bytes / 1024).toFixed(1)} KB</td>
               <td style={{ padding: '0.5rem', fontSize: '0.85rem' }}>
-                {new Date(doc.indexed_at).toLocaleString()}
+                {new Date(doc.indexed_at || doc.created_at).toLocaleString()}
               </td>
               <td style={{ padding: '0.5rem' }}>
                 <button 

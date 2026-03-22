@@ -1,9 +1,9 @@
 {
-  "company":        "Azienda S.r.l.",
-  "slug":           "azienda-s-r",
+  "company":        "ACME",
+  "slug":           "acme",
   "industry":       "Generale",
   "contact":        "Amministratore",
-  "email":          "admin@azienda-s-r.local",
+  "email":          "admin@acme.local",
   "domain":         "localhost",
   "language":       "italiano",
   "lang_code":      "it",
@@ -12,6 +12,6 @@
   "deploy_mode":    "cpu",
   "llm_model":      "gemma2:2b",
   "domains":        "corporate_docs",
-  "installed_at":   "2026-03-11T12:40:57Z",
+  "installed_at":   "2026-03-22T11:09:50Z",
   "installer_ver":  "1.1.0"
 }

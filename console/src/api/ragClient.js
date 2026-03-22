@@ -13,6 +13,7 @@ export const api = {
   listDocs:     (collection) => fetch(`${BASE}/documents/list${collection ? `?collection_name=${collection}` : ''}`).then(r => r.json()),
   uploadDoc:    (file, collection) => { const fd = new FormData(); fd.append('file', file); if (collection) fd.append('collection_name', collection); return fetch(`${BASE}/documents/upload`, { method: 'POST', body: fd }).then(r => r.json()); },
   deleteDoc:    (id, collection) => fetch(`${BASE}/documents/${id}${collection ? `?collection_name=${collection}` : ''}`, { method: 'DELETE' }).then(r => r.json()),
+  deleteBatch:  (ids, collection) => fetch(`${BASE}/documents/batch-delete${collection ? `?collection_name=${collection}` : ''}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ids) }).then(r => r.json()),
   reindexDoc:   (id, collection) => fetch(`${BASE}/documents/${id}/reindex${collection ? `?collection_name=${collection}` : ''}`, { method: 'POST' }).then(r => r.json()),
   moveDoc:      (id, body) => fetch(`${BASE}/documents/${id}/domain`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
 

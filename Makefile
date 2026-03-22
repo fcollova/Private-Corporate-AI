@@ -8,7 +8,7 @@
 
 .PHONY: up-gpu up-lite down down-lite build restart-lite restart-gpu \
         rebuild-rag reload-nginx logs logs-rag logs-init logs-ollama \
-        logs-qdrant logs-nginx logs-webui logs-lite status status-lite \
+        logs-qdrant logs-redis logs-nginx logs-webui logs-lite status status-lite \
         monitor monitor-once gpu-monitor \
         pull-models-gpu pull-models-lite list-models active-model pull-model remove-model \
         health test-chat list-docs upload-doc init-collection list-rag-models \
@@ -119,6 +119,10 @@ monitor-once:
 logs-qdrant:
 	$(COMPOSE_LITE) logs -f qdrant
 
+## Show Redis logs (cache)
+logs-redis:
+	$(COMPOSE_LITE) logs -f redis
+
 ## Show Nginx logs (reverse proxy)
 logs-nginx:
 	$(COMPOSE_LITE) logs -f nginx
@@ -178,6 +182,9 @@ health:
 	@echo ""
 	@echo ">>> Qdrant Healthcheck:"
 	curl -sk http://localhost:6333/healthz 2>/dev/null || echo "Qdrant not reachable from outside (normal if UFW active)"
+	@echo ""
+	@echo ">>> Redis Healthcheck:"
+	@docker exec corporate_ai_redis redis-cli ping 2>/dev/null || echo "Redis not reachable"
 
 ## Test sample RAG query
 test-chat:
@@ -206,18 +213,13 @@ init-collection:
 list_rag_models:
 	curl -sk https://localhost/rag/v1/models | python3 -m json.tool
 
-## Completely wipe the RAG (delete documents and vector index)
+## Completely wipe the RAG (delete documents, vector index, SQL metadata and Redis cache)
 wipe-rag:
-	@echo ">>> WARNING: This operation will delete ALL indexed documents!"
+	@echo ">>> WARNING: This operation will delete ALL indexed documents and metadata!"
 	@read -p "Are you sure? Type 'YES' to confirm: " confirm && [ "$$confirm" = "YES" ]
-	@echo ">>> Deleting Qdrant vector index..."
-	$(eval QDRANT_KEY := $(shell grep QDRANT_API_KEY .env | cut -d= -f2))
-	@docker exec corporate_ai_rag curl -s -X DELETE http://qdrant:6333/collections/corporate_docs \
-	  -H "api-key: $(QDRANT_KEY)" > /dev/null || true
-	@echo ">>> Deleting physical files in uploads/..."
-	@docker exec corporate_ai_rag sh -c "rm -rf /app/uploads/* && touch /app/uploads/.gitkeep"
-	@echo ">>> RAG cleaned successfully."
-	@echo ">>> Collection will be automatically recreated on next upload."
+	@echo ">>> Calling System Wipe API..."
+	curl -sk -X POST https://localhost/api/rag/system/wipe | python3 -m json.tool
+	@echo ">>> RAG system cleaned successfully."
 
 # -----------------------------------------------------------------------------
 # CONSOLE
@@ -276,13 +278,14 @@ export-client-config:
 # -----------------------------------------------------------------------------
 
 
-## Perform full data backup (vector index + documents + config)
+## Perform full data backup (vector index + documents + SQL metadata + config)
 backup:
 	@echo ">>> Backing up Private Corporate AI..."
 	@mkdir -p ./backups
 	sudo tar -czf ./backups/backup_$(shell date +%Y%m%d_%H%M%S).tar.gz \
 	  /var/lib/docker/volumes/private-corporate-ai_qdrant_data \
 	  /var/lib/docker/volumes/private-corporate-ai_rag_uploads \
+	  /var/lib/docker/volumes/private-corporate-ai_rag_data \
 	  /var/lib/docker/volumes/private-corporate-ai_webui_data \
 	  .env 2>/dev/null || true
 	@echo ">>> Backup completed in ./backups/"
@@ -318,30 +321,63 @@ clean:
 	@echo ">>> Stack removed completely"
 
 # -----------------------------------------------------------------------------
-# HELP
+# HELP (PROFESSIONAL CLI)
 # -----------------------------------------------------------------------------
+
+# Colori
+GREEN  := $(shell tput -Txterm setaf 2)
+YELLOW := $(shell tput -Txterm setaf 3)
+WHITE  := $(shell tput -Txterm setaf 7)
+CYAN   := $(shell tput -Txterm setaf 6)
+RESET  := $(shell tput -Txterm sgr0)
 
 ## Show this help message
 help:
 	@echo ""
-	@echo "  Private Corporate AI — Available Commands"
-	@echo "  ==========================================="
-	@grep -E '^##' $(MAKEFILE_LIST) | sed 's/## /  /'
+	@echo "$(WHITE)Private Corporate AI — Command Line Interface$(RESET)"
+	@echo "$(DIM)Versione 0.2.0 (Corporate Ready)$(RESET)"
 	@echo ""
-	@echo "  Common examples:"
-	@echo "    make setup                          → Initial configuration"
-	@echo "    make up-lite                        → Start (CPU mode)"
-	@echo "    make restart-lite                   → Restart after down"
-	@echo "    make down-lite                      → Stop all"
-	@echo "    make status-lite                    → Container status"
-	@echo "    make health                         → Verify services"
-	@echo "    make logs-lite                      → Real-time logs"
-	@echo "    make monitor                        → CPU/RAM resources"
-	@echo "    make test-chat                      → Test RAG query"
-	@echo "    make pull-model MODEL=mistral:7b    → Download model"
-	@echo "    make upload-doc FILE=./doc.pdf      → Upload document"
-	@echo "    make rebuild-rag                    → Rebuild RAG backend"
-	@echo "    make reload-nginx                   → Reload Nginx"
+	@echo "$(CYAN)USAGE:$(RESET)"
+	@echo "  make $(GREEN)<target>$(RESET)"
+	@echo ""
+	@echo "$(CYAN)INSTALLATION:$(RESET)"
+	@printf "  $(GREEN)install$(RESET)             Interactive installer (auto-detect hardware)\n"
+	@printf "  $(GREEN)install-gpu$(RESET)         Force FULL mode installation (NVIDIA GPU)\n"
+	@printf "  $(GREEN)install-cpu$(RESET)         Force LITE mode installation (CPU-only)\n"
+	@printf "  $(GREEN)uninstall$(RESET)           Guided safe removal procedure\n"
+	@echo ""
+	@echo "$(CYAN)STACK MANAGEMENT:$(RESET)"
+	@printf "  $(GREEN)up-gpu$(RESET)              Start in FULL mode (GPU)\n"
+	@printf "  $(GREEN)up-lite$(RESET)             Start in LITE mode (CPU)\n"
+	@printf "  $(GREEN)down$(RESET)                Stop all services\n"
+	@printf "  $(GREEN)restart-lite$(RESET)        Quick restart (CPU)\n"
+	@printf "  $(GREEN)rebuild-rag$(RESET)         Rebuild only the RAG Backend\n"
+	@echo ""
+	@echo "$(CYAN)LOGS & MONITORING:$(RESET)"
+	@printf "  $(GREEN)status$(RESET)              Check health of all containers\n"
+	@printf "  $(GREEN)logs$(RESET)                Combined logs for all services\n"
+	@printf "  $(GREEN)logs-rag$(RESET)            RAG Backend specific logs\n"
+	@printf "  $(GREEN)logs-redis$(RESET)          Redis cache logs\n"
+	@printf "  $(GREEN)monitor$(RESET)             Real-time CPU/RAM resource usage\n"
+	@printf "  $(GREEN)gpu-monitor$(RESET)         NVIDIA GPU VRAM/Temp monitoring\n"
+	@echo ""
+	@echo "$(CYAN)RAG OPERATIONS:$(RESET)"
+	@printf "  $(GREEN)health$(RESET)              Verify Ollama + Qdrant + Redis connectivity\n"
+	@printf "  $(GREEN)upload-doc$(RESET)          Upload a file (usage: FILE=path/to/file)\n"
+	@printf "  $(GREEN)list-docs$(RESET)           List indexed docs in SQL metadata DB\n"
+	@printf "  $(GREEN)test-chat$(RESET)           Test a RAG query from CLI\n"
+	@printf "  $(GREEN)wipe-rag$(RESET)            ⚠️  Delete all docs, vectors and cache\n"
+	@echo ""
+	@echo "$(CYAN)MODELS:$(RESET)"
+	@printf "  $(GREEN)list-models$(RESET)         List models installed on Ollama\n"
+	@printf "  $(GREEN)pull-model$(RESET)          Download model (usage: MODEL=name:tag)\n"
+	@echo ""
+	@echo "$(CYAN)MAINTENANCE:$(RESET)"
+	@printf "  $(GREEN)backup$(RESET)              Full data backup (SQL + Vectors + Uploads)\n"
+	@printf "  $(GREEN)setup$(RESET)               Initial .env and SSL generation\n"
+	@printf "  $(GREEN)clean$(RESET)               ⚠️  Delete ALL data and volumes\n"
+	@echo ""
+	@echo "Type '$(GREEN)make <target>$(RESET)' to execute a command."
 	@echo ""
 
 .DEFAULT_GOAL := help

@@ -227,6 +227,30 @@ const App = () => {
           </div>
         </main>
       </div>
+
+      {/* FOOTER DI TRASPARENZA (EU AI Act Compliance) */}
+      <footer style={{ 
+        background: '#1e293b', 
+        padding: '0.75rem 2rem', 
+        borderTop: '1px solid #334155',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: '0.8rem',
+        color: '#94a3b8'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ 
+            background: '#334155', 
+            padding: '2px 8px', 
+            borderRadius: '4px', 
+            fontSize: '0.7rem',
+            fontWeight: 'bold',
+            color: '#f1f5f9'
+          }}>AI DISCLOSURE</span>
+          <span>Interazione con sistema di Intelligenza Artificiale (EU AI Act Compliant). Le risposte sono generate automaticamente e devono essere verificate.</span>
+        </div>
+      </footer>
     </div>
   );
 };

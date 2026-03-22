@@ -1,4 +1,4 @@
-/* Private Corporate AI — Tema Azienda S.r.l. */
+/* Private Corporate AI — Tema ACME */
 /* Generato automaticamente da install.sh */
 :root {
   --primary-color:      #1A3A5C;
@@ -6,7 +6,7 @@
   --sidebar-bg:         color-mix(in srgb, #1A3A5C 15%, #1a1a2e);
 }
 .sidebar-header::after, .nav-container::before {
-  content: "Azienda S.r.l.";
+  content: "ACME";
   font-size: 0.7rem;
   opacity: 0.6;
   display: block;
@@ -15,4 +15,16 @@
   margin-bottom: 10px;
   padding: 10px;
   font-weight: bold;
+}
+/* AI Transparency Disclosure (EU AI Act Art. 50) */
+main::after {
+  content: "⚠️ Interazione con sistema di Intelligenza Artificiale locale. Le risposte sono generate automaticamente e possono contenere errori.";
+  display: block;
+  text-align: center;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  padding: 10px;
+  opacity: 0.8;
+  border-top: 1px solid #334155;
+  margin-top: auto;
 }

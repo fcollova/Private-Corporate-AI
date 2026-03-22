@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from loguru import logger
 
 from config import settings
+from database import init_db
 from routers import system, documents, domains, chat
 
 @asynccontextmanager
@@ -22,6 +23,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"  Modalita': {settings.deploy_mode}")
     logger.info("═" * 60)
     
+    # Inizializza database e directory
+    await init_db()
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     yield
     logger.info("Shutdown RAG Backend")

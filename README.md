@@ -4,11 +4,11 @@
 
 A complete, production-ready, 100% open-source stack to deploy LLMs and RAG (*Retrieval-Augmented Generation*) **inside** your corporate infrastructure. Zero data sent to external servers. Zero cloud vendor dependencies. Full GDPR compliance.
 
-> ⚠️ **Status: Active Development — v0.1.0**  
+> ⚠️ **Status: Active Development — v0.2.0**  
 > This project is under active development. APIs and configurations may change between releases. See [ROADMAP.md](./ROADMAP.md) for the planned feature timeline.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](./Release.txt)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](./Release.txt)
 [![Status](https://img.shields.io/badge/status-active%20development-yellow.svg)]()
 [![Docker](https://img.shields.io/badge/Docker-Compose_v3.9-2496ED?logo=docker)](https://docs.docker.com/compose/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
@@ -111,6 +111,18 @@ The two-network separation ensures that the LLM inference engine and vector data
 
 ---
 
+## ⚡ RAG Backend Highlights (v0.2.0)
+
+The backend has been re-architected for corporate stability and performance:
+
+- **Persistent Metadata Store**: Uses **SQLite/SQLAlchemy** to track document lifecycle, ensuring state persistence across restarts.
+- **Content De-duplication**: Automatic **SHA-256 hashing** prevents redundant indexing of the same files.
+- **Parallel Ingestion**: Async batch processing with semaphores speeds up document indexing by up to **75%**.
+- **Redis Embedding Cache**: Integrated **Redis** to cache vector embeddings, reducing latency and LLM load for repeated queries.
+- **SSE Streaming**: Real-time answer generation via **Server-Sent Events** for a modern, responsive chat experience.
+
+---
+
 ## 🧠 Advanced RAG Pipeline
 
 Unlike traditional RAG systems, **Private Corporate AI** implements two state-of-the-art techniques to maximize response accuracy:
@@ -135,6 +147,7 @@ Results are merged using **Reciprocal Rank Fusion (RRF)**, ensuring **30–40% s
 | `corporate_ai_webui` | `ghcr.io/open-webui/open-webui:v0.8.8` | Web chat interface, conversation management | MIT |
 | `corporate_ai_console` | `node:20-alpine` | **Document Management Console** (React + Vite) | MIT |
 | `corporate_ai_rag` | *Custom build* | FastAPI + LangChain, RAG pipeline, Advanced PDF Table Extraction (**PyMuPDF4LLM**), OpenAI-compatible API | Apache 2.0 |
+| `corporate_ai_redis` | `redis:7.4.2-alpine` | **Embedding & Query Cache** | MIT |
 | `corporate_ai_ollama` | `ollama/ollama:0.17.7` | Local LLM runtime, CPU and NVIDIA GPU support | MIT |
 | `corporate_ai_qdrant` | `qdrant/qdrant:v1.17.0` | Vector database, Hybrid Search (Dense + Sparse/BM25) with RRF | Apache 2.0 |
 | `corporate_ai_ollama_init` | `ollama/ollama` | One-shot init: downloads LLM and embedding model on first startup | MIT |
@@ -227,7 +240,7 @@ After startup (allow 2–5 minutes for model download on first run):
 | **Open WebUI** | `https://localhost` | Main chat interface |
 | **Document Console** | `https://localhost/console/` | Document and RAG domain management |
 | **RAG API Docs** | `https://localhost/rag-docs` | Interactive Swagger UI |
-| **RAG Health** | `https://localhost/api/rag/health` | Ollama + Qdrant status |
+| **RAG Health** | `https://localhost/api/health` | Ollama + Qdrant + Redis status |
 
 ---
 
@@ -261,6 +274,7 @@ The entire stack is managed via `make`. Here is the complete command reference b
 | `make logs-rag` | RAG Backend specific logs (FastAPI) |
 | `make logs-init` | Monitor initial model download |
 | `make logs-ollama` | LLM inference engine logs |
+| `make logs-redis` | **NEW**: Redis cache logs |
 | `make monitor` | **Resource dashboard**: real-time CPU, RAM and Network |
 | `make gpu-monitor` | VRAM and GPU temperature monitoring (NVIDIA) |
 | `make logs-nginx` | Reverse proxy and HTTP traffic logs |
@@ -280,11 +294,11 @@ The entire stack is managed via `make`. Here is the complete command reference b
 
 | Command | Description |
 |---------|-------------|
-| `make health` | Verify connectivity between RAG, Ollama and Qdrant |
-| `make upload-doc FILE=...` | Upload and index a file (PDF, DOCX, TXT, MD) |
-| `make list-docs` | List indexed documents in the vector database |
+| `make health` | Verify connectivity between RAG, Ollama, Qdrant and Redis |
+| `make upload-doc FILE=...` | Upload and index a file (PDF, DOCX, TXT, MD, XLSX, PPTX) |
+| `make list-docs` | List indexed documents in the SQL metadata database |
 | `make test-chat` | Send a query to the RAG and receive response with sources |
-| `make wipe-rag` | ⚠️ **Wipe RAG**: deletes all vectors and uploaded files |
+| `make wipe-rag` | ⚠️ **Wipe RAG**: deletes vectors, uploads, SQL database and Redis cache |
 | `make init-collection` | Manually initialize the Qdrant collection |
 
 ### 💻 Document Management Console
@@ -309,7 +323,7 @@ The entire stack is managed via `make`. Here is the complete command reference b
 
 | Command | Description |
 |---------|-------------|
-| `make backup` | Create a compressed backup of all Docker volumes and `.env` |
+| `make backup` | Create a compressed backup of all Docker volumes (including SQL) and `.env` |
 | `make uninstall` | Guided safe removal procedure for the entire stack |
 | `make help` | Show the interactive command guide |
 

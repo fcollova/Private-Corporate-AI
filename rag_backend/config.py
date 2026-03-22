@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.2, ge=0.0, le=1.0)
     llm_context_window: int = Field(default=4096, ge=512)
     ollama_base_url: str = Field(default="http://ollama:11434")
+    ollama_num_parallel: int = Field(default=2, ge=1)
     request_timeout: int = Field(default=120, ge=30)
     qdrant_host: str = Field(default="qdrant")
     qdrant_port: int = Field(default=6333)
@@ -34,6 +35,11 @@ class Settings(BaseSettings):
     top_k_results: int = Field(default=5, ge=1, le=20)
     hybrid_search_enabled: bool = Field(default=True)
     upload_dir: str = Field(default="/app/uploads")
+    data_dir: str = Field(default="/app/data")
+    database_url: str = Field(default="sqlite+aiosqlite:////app/data/rag.db")
+    web_workers: int = Field(default=2, ge=1)
+    redis_url: str = Field(default="redis://redis:6379/0")
+    embedding_cache_enabled: bool = Field(default=True)
     log_level: str = Field(default="INFO")
 
     # Profilo Cliente

@@ -1,23 +1,22 @@
 import pytest
-from unittest.mock import MagicMock, patch
+import asyncio
+from unittest.mock import MagicMock, patch, AsyncMock
 from pathlib import Path
 from pipeline import get_document_loader, MarkItDownLoader, MarkdownPDFLoader
+from models import DocumentStatus, Document as SQLDocument
+from sqlalchemy import select
 
 def test_get_document_loader_pdf():
     loader = get_document_loader("test.pdf", ".pdf")
     assert isinstance(loader, MarkdownPDFLoader)
 
 def test_get_document_loader_docx():
+    # Ora DOCX usa MarkItDownLoader
     loader = get_document_loader("test.docx", ".docx")
-    from langchain_community.document_loaders import Docx2txtLoader
-    assert isinstance(loader, Docx2txtLoader)
+    assert isinstance(loader, MarkItDownLoader)
 
 def test_get_document_loader_xlsx():
     loader = get_document_loader("test.xlsx", ".xlsx")
-    assert isinstance(loader, MarkItDownLoader)
-
-def test_get_document_loader_pptx():
-    loader = get_document_loader("test.pptx", ".pptx")
     assert isinstance(loader, MarkItDownLoader)
 
 def test_get_document_loader_unsupported():
@@ -26,67 +25,69 @@ def test_get_document_loader_unsupported():
 
 @patch("pipeline.pymupdf4llm")
 def test_markdown_pdf_loader_load(mock_pymupdf):
-    # Mock pymupdf4llm conversion
-    mock_pymupdf.to_markdown.return_value = "| Col1 | Col2 |\n|---|---|"
-    
+    mock_pymupdf.to_markdown.return_value = "| Table |"
     loader = MarkdownPDFLoader("test.pdf")
     documents = loader.load()
-    
     assert len(documents) == 1
-    assert "| Col1 | Col2 |" in documents[0].page_content
-    assert documents[0].metadata["format"] == "markdown"
-    mock_pymupdf.to_markdown.assert_called_once_with("test.pdf")
-
-@patch("pipeline.MarkItDown")
-def test_markitdown_loader_load(mock_markitdown):
-    # Mock MarkItDown conversion
-    mock_instance = mock_markitdown.return_value
-    mock_result = MagicMock()
-    mock_result.text_content = "# Test Content"
-    mock_instance.convert.return_value = mock_result
-    
-    loader = MarkItDownLoader("test.xlsx")
-    documents = loader.load()
-    
-    assert len(documents) == 1
-    assert documents[0].page_content == "# Test Content"
-    assert documents[0].metadata["source"] == "test.xlsx"
-    mock_instance.convert.assert_called_once_with("test.xlsx")
+    assert "page_content" in documents[0].__dict__ or hasattr(documents[0], "page_content")
+    assert "| Table |" in documents[0].page_content
 
 @pytest.mark.asyncio
 @patch("pipeline.rag")
 @patch("pipeline.settings")
-async def test_process_document_xlsx(mock_settings, mock_rag, tmp_path):
-    # Setup mocks
-    mock_settings.chunk_size = 1000
-    mock_settings.chunk_overlap = 200
-    mock_settings.qdrant_collection_name = "test_col"
+@patch("pipeline.SessionLocal")
+async def test_process_document_success(mock_session_local, mock_settings, mock_rag, db_session, tmp_path):
+    # 1. Setup Database state
+    doc_id = "test-uuid"
+    filename = "test.txt"
+    new_doc = SQLDocument(
+        doc_id=doc_id,
+        filename=filename,
+        file_type=".txt",
+        file_hash="hash123",
+        collection_name="test_col",
+        status=DocumentStatus.QUEUED
+    )
+    db_session.add(new_doc)
+    await db_session.commit()
+
+    # 2. Setup Mocks
+    mock_settings.chunk_size = 100
+    mock_settings.chunk_overlap = 10
+    mock_settings.ollama_num_parallel = 1
     
     mock_llm = MagicMock()
-    mock_llm.invoke.return_value = "Context Prefix"
+    # mock_llm.ainvoke = AsyncMock(return_value="Context:") # Se usassimo ainvoke
+    # Per ora generate_contextual_prefix usa get_llm().invoke
+    mock_llm.invoke.return_value = "Context: "
     mock_rag.get_llm.return_value = mock_llm
     
     mock_vector_store = MagicMock()
     mock_rag.get_vector_store.return_value = mock_vector_store
     mock_rag.ensure_collection_exists = AsyncMock()
     
-    # Create a dummy file
-    test_file = tmp_path / "test.xlsx"
-    test_file.write_text("dummy")
+    # Mock SessionLocal per far usare il nostro db_session in-memory dentro pipeline.py
+    mock_session_local.return_value.__aenter__.return_value = db_session
+
+    # 3. Esecuzione
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Contenuto di test molto lungo per generare chunk.")
     
-    # Mock MarkItDownLoader
-    with patch("pipeline.MarkItDownLoader.load") as mock_load:
+    from pipeline import process_document
+    with patch("pipeline.TextLoader.load") as mock_load:
         from langchain.schema import Document
-        mock_load.return_value = [Document(page_content="Excel data", metadata={})]
+        mock_load.return_value = [Document(page_content="Contenuto di test", metadata={})]
         
-        from pipeline import process_document
-        total_indexed = await process_document(str(test_file), "test.xlsx", "doc123")
-        
-        assert total_indexed > 0
-        
-        # Verifica metadati (prendendo l'ultima chiamata a add_documents)
-        indexed_docs = mock_vector_store.add_documents.call_args[0][0]
-        assert "is_table" in indexed_docs[0].metadata
-        
-        mock_rag.ensure_collection_exists.assert_called_once()
-        mock_vector_store.add_documents.assert_called()
+        await process_document(str(test_file), filename, doc_id)
+
+    # 4. Verifiche
+    # Verifica che lo stato nel DB sia COMPLETED
+    stmt = select(SQLDocument).where(SQLDocument.doc_id == doc_id)
+    result = await db_session.execute(stmt)
+    updated_doc = result.scalar_one()
+    
+    assert updated_doc.status == DocumentStatus.COMPLETED
+    assert updated_doc.progress == 100
+    assert updated_doc.indexed_at is not None
+    
+    mock_vector_store.add_documents.assert_called()

@@ -40,8 +40,9 @@ RUN mkdir -p uploads
 EXPOSE 8000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/api/rag/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8000/api/health || exit 1
 
-# Avvio
-CMD ["python", "main.py"]
+# Avvio con Gunicorn (Multi-worker)
+# Il numero di worker viene letto da variabile d'ambiente o calcolato dinamicamente
+CMD ["sh", "-c", "gunicorn main:app --workers ${WEB_WORKERS:-2} --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 300 --access-logfile - --error-logfile -"]

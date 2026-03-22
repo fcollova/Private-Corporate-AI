@@ -10,9 +10,17 @@
 # -----------------------------------------------------------------------------
 fastapi==0.115.5                   # Framework API async (MIT)
 uvicorn[standard]==0.32.1          # Server ASGI ad alte prestazioni (BSD)
+gunicorn==23.0.0                   # Process manager per worker paralleli (MIT)
 python-multipart==0.0.17           # Upload file multipart (Apache 2.0)
 pydantic==2.10.3                   # Validazione dati e settings (MIT)
 pydantic-settings==2.7.0           # Gestione configurazione da .env (MIT)
+
+# -----------------------------------------------------------------------------
+# DATABASE — Metadata Store (Fase 1)
+# -----------------------------------------------------------------------------
+SQLAlchemy==2.0.36                 # ORM SQL per metadati documenti (MIT)
+aiosqlite==0.20.0                  # Driver SQLite asincrono (MIT)
+redis==5.2.1                       # Client Redis per Python (MIT)
 
 # -----------------------------------------------------------------------------
 # LANGCHAIN — Orchestrazione RAG Pipeline
@@ -22,6 +30,7 @@ langchain-community>=0.3.0
 langchain-ollama>=0.2.0
 langchain-qdrant>=0.2.0
 langchain-text-splitters>=0.3.0
+langchain-redis>=0.0.1             # Integrazione Redis per LangChain (MIT)
 
 # -----------------------------------------------------------------------------
 # VECTOR DATABASE CLIENT
@@ -61,7 +70,8 @@ loguru==0.7.3                      # Logging avanzato e colorato (MIT)
 prometheus-client==0.21.1          # Metriche Prometheus (Apache 2.0)
 
 # -----------------------------------------------------------------------------
-# SECURITY
+# TESTING & QUALITÀ
 # -----------------------------------------------------------------------------
-python-jose[cryptography]==3.3.0   # JWT token handling (MIT)
-passlib[bcrypt]==1.7.4             # Hashing password (BSD)
+pytest==8.3.3
+pytest-asyncio==0.24.0
+# httpx è già incluso sopra alla versione 0.28.1

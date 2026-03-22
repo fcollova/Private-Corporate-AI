@@ -50,6 +50,8 @@ volumes:
     driver: local
   rag_uploads:        # Documenti caricati dagli utenti (PDF, DOCX, TXT)
     driver: local
+  rag_data:           # Database SQL metadati (SQLite)
+    driver: local
   nginx_logs:         # Log di accesso e errori Nginx
     driver: local
 
@@ -142,6 +144,21 @@ services:
       - "com.corporate-ai.description=Database vettoriale per embeddings documenti"
 
   # =========================================================================
+  # 3b. REDIS — Cache per embedding (Fase 1 - Punto 4)
+  # =========================================================================
+  redis:
+    image: ${REDIS_IMAGE:-redis:alpine}
+    container_name: corporate_ai_redis
+    restart: unless-stopped
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================================================================
   # 4. RAG BACKEND — FastAPI + LangChain (il cuore del sistema)
   #    Pipeline: Upload → Chunking → Embedding → Qdrant → LLM → Risposta
   #    Porta interna: 8000
@@ -157,6 +174,7 @@ services:
       - backend_net
     volumes:
       - rag_uploads:/app/uploads         # Documenti caricati persistenti
+      - rag_data:/app/data               # Database SQL persistente
       - ./rag_backend:/app               # Hot-reload in sviluppo (include main.py, etc)
     environment:
       # LLM
@@ -190,11 +208,16 @@ services:
       - CLIENT_THEME_COLOR=${CLIENT_THEME_COLOR:-#1A3A5C}
       - CLIENT_THEME_NAME=${CLIENT_THEME_NAME:-blue}
       - CLIENT_DOMAINS=${CLIENT_DOMAINS:-corporate_docs}
+      - WEB_WORKERS=${WEB_WORKERS:-2}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - EMBEDDING_CACHE_ENABLED=${EMBEDDING_CACHE_ENABLED:-true}
     depends_on:
       ollama:
         condition: service_started
       qdrant:
-        condition: service_started   # distroless: nessun healthcheck disponibile
+        condition: service_started
+      redis:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -237,13 +260,14 @@ services:
       - ANONYMIZED_TELEMETRY=false
       - TZ=${TZ:-Europe/Rome}
     depends_on:
-      - ollama
-      - rag_backend
+      rag_backend:
+        condition: service_healthy
     healthcheck:
-      # open-webui scarica modelli HF al primo avvio: può richiedere 5-15 minuti.
-      # Healthcheck disabilitato — Nginx parte con service_started e riprova
-      # autonomamente finché WebUI non risponde (proxy_connect_timeout in nginx.conf)
-      disable: true
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     labels:
       - "com.corporate-ai.service=webui"
       - "com.corporate-ai.description=Interfaccia utente chat"
@@ -300,7 +324,7 @@ services:
       - TZ=${TZ:-Europe/Rome}
     depends_on:
       open_webui:
-        condition: service_started
+        condition: service_healthy
       rag_backend:
         condition: service_healthy
     healthcheck:
