@@ -178,6 +178,9 @@ Results are merged using **Reciprocal Rank Fusion (RRF)**, ensuring **30–40% s
 
 > **AVX2 Note:** Ollama uses AVX2 instructions to accelerate CPU inference. Verify support with: `grep avx2 /proc/cpuinfo | head -1` — any modern CPU (post-2013) supports it.
 
+### 🖥️ Windows (WSL2) Users
+If you are installing Private Corporate AI on **Windows via WSL2**, please read the **[WSL2 Setup Section](./DEPLOYMENT_GUIDE.md#2b-wsl2-windows-subsystem-for-linux-setup)** in the Deployment Guide. It covers critical information regarding Docker Desktop integration, GPU setup, and filesystem performance.
+
 ---
 
 ## 🚀 Quick Start

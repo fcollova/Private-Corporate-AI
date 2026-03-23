@@ -46,26 +46,41 @@ Il boilerplate supporta due modalità di esecuzione selezionabili tramite variab
 ## 2. Prerequisiti Hardware
 
 ### Modalità FULL (GPU)
+...
+| OS | Linux / WSL2 | Ubuntu 22.04+ LTS |
+...
+---
 
-| Componente | Minimo | Consigliato |
-|---|---|---|
-| **CPU** | 8 core | 16+ core |
-| **RAM** | 32 GB | 64 GB |
-| **GPU VRAM** | 16 GB (RTX 3090) | 24 GB (RTX 4090) |
-| **Storage** | 200 GB SSD | 500 GB NVMe |
-| **OS** | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS |
+## 2b. WSL2 (Windows Subsystem for Linux) Setup
 
-### Modalità LITE (CPU-only)
+Se stai installando Private Corporate AI su **Windows tramite WSL2**, segui attentamente queste raccomandazioni per evitare conflitti e cali di prestazioni:
 
-| Componente | Minimo | Consigliato |
-|---|---|---|
-| **CPU** | 4 core (x86_64 con AVX2) | 8-16 core |
-| **RAM** | 8 GB | 16-32 GB |
-| **GPU** | ❌ Non richiesta | — |
-| **Storage** | 50 GB SSD | 200 GB SSD |
-| **OS** | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS |
+### 🐳 Docker su WSL2
+**NON** lasciare che lo script `install.sh` installi Docker Engine dentro WSL.
+1. Installa **Docker Desktop** su Windows.
+2. Nelle impostazioni di Docker Desktop, vai in **Settings > Resources > WSL Integration** e abilita l'integrazione per la tua distribuzione (es. Ubuntu).
+3. In questo modo, il comando `docker` sarà disponibile dentro WSL senza conflitti.
 
-> **Nota AVX2:** Ollama usa istruzioni AVX2 per accelerare l'inferenza CPU. Verifica con: `grep avx2 /proc/cpuinfo | head -1` — qualsiasi CPU moderna (post-2013) le supporta.
+### 🎮 GPU NVIDIA su WSL2
+L'installazione automatica dei driver e del toolkit tramite lo script potrebbe fallire su WSL.
+1. Assicurati di avere i **driver NVIDIA più recenti** installati su Windows (Host).
+2. All'interno di WSL, installa **manualmente** il toolkit seguendo la [guida ufficiale NVIDIA per WSL2](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#installing-nvidia-container-toolkit).
+3. **NON** installare driver NVIDIA (`ubuntu-drivers`) dentro WSL.
+
+### 📁 Performance del File System (Critico)
+Per evitare rallentamenti estremi (fino a 10 volte più lento):
+*   Clona il progetto nella **Home di Linux** (es: `/home/utente/private-corporate-ai`).
+*   **EVITA** assolutamente di installare il progetto sotto `/mnt/c/` o altre partizioni Windows mappate.
+
+### 🧠 Risorse di Sistema
+Di default WSL2 usa solo il 50% della RAM. Se hai bisogno di più potenza per i modelli LLM:
+1. Crea o modifica il file `%USERPROFILE%\.wslconfig` su Windows.
+2. Aggiungi queste righe (esempio per 32GB RAM):
+   ```ini
+   [wsl2]
+   memory=24GB
+   processors=8
+   ```
 
 ---
 

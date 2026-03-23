@@ -9,6 +9,8 @@
 .gemini
 GEMINI.md
 ROADMAP.md
+PCAI-integration.md
+PCAI-rag.md
 
 # Certificati SSL (generati localmente)
 nginx/ssl/*.crt
@@ -19,6 +21,9 @@ nginx/ssl/*.pem
 doc/
 rag_backend/uploads/
 docs_volume/
+
+#GCP
+GCP/
 
 # Python
 __pycache__/
