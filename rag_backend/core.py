@@ -14,15 +14,18 @@ from langchain_qdrant import QdrantVectorStore, RetrievalMode
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import RedisStore
 
-# Importazione robusta per FastEmbedSparseEmbeddings
+# Importazione robusta per FastEmbedSparse (precedentemente FastEmbedSparseEmbeddings)
 try:
-    from langchain_qdrant import FastEmbedSparseEmbeddings
+    from langchain_qdrant import FastEmbedSparse
 except ImportError:
     try:
-        from langchain_qdrant.fastembed_sparse import FastEmbedSparseEmbeddings
+        from langchain_qdrant import FastEmbedSparseEmbeddings as FastEmbedSparse
     except ImportError:
-        # Fallback se non disponibile (vecchie versioni o installazione incompleta)
-        FastEmbedSparseEmbeddings = None
+        try:
+            from langchain_qdrant.fastembed_sparse import FastEmbedSparseEmbeddings as FastEmbedSparse
+        except ImportError:
+            # Fallback se non disponibile (vecchie versioni o installazione incompleta)
+            FastEmbedSparse = None
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, SparseVectorParams, SparseIndexParams
@@ -33,7 +36,7 @@ class RagComponents:
     def __init__(self):
         self._llm: Optional[OllamaLLM] = None
         self._embeddings: Optional[OllamaEmbeddings] = None
-        self._sparse_embeddings: Optional[FastEmbedSparseEmbeddings] = None
+        self._sparse_embeddings: Optional[object] = None
         self._qdrant_client: Optional[QdrantClient] = None
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=2, min=4, max=30), reraise=True)
@@ -76,12 +79,12 @@ class RagComponents:
         return base_embeddings
 
     def _init_sparse_embeddings(self) -> Optional[object]:
-        if FastEmbedSparseEmbeddings is None:
-            logger.error("FastEmbedSparseEmbeddings non disponibile. Hybrid Search disabilitata.")
+        if FastEmbedSparse is None:
+            logger.error("FastEmbedSparse non disponibile. Hybrid Search disabilitata.")
             return None
         logger.info("Inizializzazione Sparse Embeddings (BM25)...")
         # Usiamo BM25 per una ricerca full-text affidabile
-        return FastEmbedSparseEmbeddings(model_name="Qdrant/bm25")
+        return FastEmbedSparse(model_name="Qdrant/bm25")
 
     @retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=2, min=2, max=20), reraise=True)
     def _init_qdrant(self) -> QdrantClient:
@@ -107,7 +110,7 @@ class RagComponents:
             self._embeddings = self._init_embeddings()
         return self._embeddings
 
-    def get_sparse_embeddings(self) -> FastEmbedSparseEmbeddings:
+    def get_sparse_embeddings(self) -> Optional[object]:
         if self._sparse_embeddings is None:
             self._sparse_embeddings = self._init_sparse_embeddings()
         return self._sparse_embeddings
@@ -146,7 +149,7 @@ class RagComponents:
             sample_vec = embeddings.embed_query("dimensione")
             
             sparse_config = None
-            if settings.hybrid_search_enabled and FastEmbedSparseEmbeddings is not None:
+            if settings.hybrid_search_enabled and FastEmbedSparse is not None:
                 sparse_config = {
                     "text-sparse": SparseVectorParams(
                         index=SparseIndexParams(on_disk=True)
