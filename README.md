@@ -7,6 +7,8 @@ A complete, production-ready, 100% open-source stack to deploy LLMs and RAG (*Re
 > ⚠️ **Status: Active Development — v0.2.0**  
 > This project is under active development. APIs and configurations may change between releases. See [ROADMAP.md](./ROADMAP.md) for the planned feature timeline.
 
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/fcollova/Private-Corporate-AI/issues)
+
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](./Release.txt)
 [![Status](https://img.shields.io/badge/status-active%20development-yellow.svg)]()
@@ -82,28 +84,10 @@ In these scenarios, additional compliance measures are required. See the [EU AI 
 
 ## 🏗️ Architecture
 
-```
-                    ┌─────────────────────────────────────────────────┐
-    Browser  ──────▶│  NGINX  (SSL · Rate Limit · Security Headers)   │
-    HTTPS           └──────────────┬───────────────────────────────────┘
-                                   │  frontend_net  172.20.0.0/24
-           ┌───────────────────────┼───────────────────────────┐
-           ▼                       ▼                           ▼
-    ┌──────────────┐       ┌──────────────┐            ┌──────────────┐
-    │ Open WebUI   │       │ RAG Console  │            │ RAG Backend  │
-    │    (Chat)    │       │ (Management) │            │  (FastAPI)   │
-    └──────────────┘       └──────────────┘            └──────┬───────┘
-                                                              │
-                                   │  backend_net  172.21.0.0/24
-                                   ┌───────────────┼──────────────────┐
-                                   │               │                  │
-                           ┌───────▼──────┐ ┌─────▼────────┐  ┌──────▼─────┐
-                           │   OLLAMA LLM │ │   QDRANT     │  │ ollama_init│
-                           │  (inference) │ │  (vectors)   │  │ (one-shot) │
-                           └──────────────┘ └──────────────┘  └────────────┘
-```
-
 **Separate Docker networks by design:**
+
+<img src="./PCAI-github.png" alt="Private Corporate AI Architecture" width="800">
+
 - `frontend_net` — Nginx, Open WebUI, RAG Console, RAG Backend
 - `backend_net` — RAG Backend, Ollama, Qdrant
 

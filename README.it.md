@@ -78,28 +78,10 @@ In questi scenari sono richieste misure di conformità aggiuntive. Consulta il [
 
 ## 🏗️ Architettura
 
-```
-                    ┌─────────────────────────────────────────────────┐
-    Browser  ──────▶│  NGINX  (SSL · Rate Limit · Security Headers)   │
-    HTTPS           └──────────────┬───────────────────────────────────┘
-                                   │  frontend_net  172.20.0.0/24
-           ┌───────────────────────┼───────────────────────────┐
-           ▼                       ▼                           ▼
-    ┌──────────────┐       ┌──────────────┐            ┌──────────────┐
-    │ Open WebUI   │       │ RAG Console  │            │ RAG Backend  │
-    │    (Chat)    │       │ (Management) │            │  (FastAPI)   │
-    └──────────────┘       └──────────────┘            └──────┬───────┘
-                                                              │
-                                   │  backend_net  172.21.0.0/24
-                                   ┌───────────────┼──────────────────┐
-                                   │               │                  │
-                           ┌───────▼──────┐ ┌─────▼────────┐  ┌──────▼─────┐
-                           │   OLLAMA LLM │ │   QDRANT     │  │ ollama_init│
-                           │  (inference) │ │  (vectors)   │  │ (one-shot) │
-                           └──────────────┘ └──────────────┘  └────────────┘
-```
-
 **Reti Docker separate by design:**
+
+<img src="./PCAI-github.png" alt="Private Corporate AI Architecture" width="800">
+
 - `frontend_net` — Nginx, Open WebUI, RAG Console, RAG Backend
 - `backend_net` — RAG Backend, Ollama, Qdrant
 
