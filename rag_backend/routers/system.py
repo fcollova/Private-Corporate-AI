@@ -95,6 +95,8 @@ async def get_client_info():
     return {
         "company": settings.client_company,
         "theme_color": settings.client_theme_color,
+        "language": settings.client_language,
+        "lang_code": settings.client_lang_code,
     }
 
 @router.get("/models/available")

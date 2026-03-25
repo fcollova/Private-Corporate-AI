@@ -14,7 +14,7 @@ from loguru import logger
 
 from config import settings
 from database import init_db
-from routers import system, documents, domains, chat
+from routers import system, documents, domains, chat, indexing
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +48,7 @@ app.include_router(system.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(domains.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(indexing.router, prefix="/api")
 
 # OpenAI compatible routes have their own prefix handling
 app.include_router(chat.router)

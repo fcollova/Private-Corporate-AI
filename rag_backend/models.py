@@ -67,3 +67,25 @@ class Document(Base):
             "indexed_at": self.indexed_at.isoformat() if self.indexed_at else None,
             "created_at": self.created_at.isoformat()
         }
+
+class IndexingSettings(Base):
+    __tablename__ = "indexing_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chunk_size: Mapped[int] = mapped_column(Integer, default=1000)
+    chunk_overlap: Mapped[int] = mapped_column(Integer, default=200)
+    top_k_results: Mapped[int] = mapped_column(Integer, default=5)
+    hybrid_search_enabled: Mapped[bool] = mapped_column(Integer, default=1) # Boolean as int for safety
+    llm_temperature: Mapped[float] = mapped_column(Integer, default=0.2)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "chunk_size": self.chunk_size,
+            "chunk_overlap": self.chunk_overlap,
+            "top_k_results": self.top_k_results,
+            "hybrid_search_enabled": bool(self.hybrid_search_enabled),
+            "llm_temperature": float(self.llm_temperature),
+            "updated_at": self.updated_at.isoformat()
+        }
+

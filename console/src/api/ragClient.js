@@ -25,4 +25,10 @@ export const api = {
   // Health
   health:       () => fetch(`${BASE}/health`).then(r => r.json()),
   clientInfo:   () => fetch(`${BASE}/client/info`).then(r => r.json()),
+
+  // Indexing Management
+  getIndexingSettings: () => fetch(`${BASE}/indexing/settings`).then(r => r.json()),
+  updateIndexingSettings: (settings) => fetch(`${BASE}/indexing/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }).then(r => r.json()),
+  getIndexingStats:    () => fetch(`${BASE}/indexing/stats`).then(r => r.json()),
+  testIndexingQuery: (query, collection) => fetch(`${BASE}/indexing/test-query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, collection }) }).then(r => r.json()),
 };
