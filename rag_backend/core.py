@@ -120,11 +120,27 @@ class RagComponents:
             self._qdrant_client = self._init_qdrant()
         return self._qdrant_client
 
+    def _collection_has_sparse_vectors(self, collection_name: str) -> bool:
+        """Verifica se la collection Qdrant ha vettori sparse configurati."""
+        try:
+            client = self.get_qdrant_client()
+            info = client.get_collection(collection_name)
+            sparse_vectors = getattr(info.config.params, "sparse_vectors", None)
+            return bool(sparse_vectors and "text-sparse" in sparse_vectors)
+        except Exception:
+            return False
+
     def get_vector_store(self, collection_name: Optional[str] = None) -> QdrantVectorStore:
         target_collection = collection_name or settings.qdrant_collection_name
         sparse_embeddings = self.get_sparse_embeddings()
-        
-        if settings.hybrid_search_enabled and sparse_embeddings is not None:
+
+        use_hybrid = (
+            settings.hybrid_search_enabled
+            and sparse_embeddings is not None
+            and self._collection_has_sparse_vectors(target_collection)
+        )
+
+        if use_hybrid:
             return QdrantVectorStore(
                 client=self.get_qdrant_client(),
                 collection_name=target_collection,
@@ -133,7 +149,13 @@ class RagComponents:
                 sparse_vector_name="text-sparse",
                 retrieval_mode=RetrievalMode.HYBRID,
             )
-        
+
+        if settings.hybrid_search_enabled and sparse_embeddings is not None:
+            logger.warning(
+                f"Collection '{target_collection}' non ha vettori sparse. "
+                "Fallback a dense-only. Re-indicizza i documenti per abilitare la Hybrid Search."
+            )
+
         return QdrantVectorStore(
             client=self.get_qdrant_client(),
             collection_name=target_collection,

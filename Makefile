@@ -217,7 +217,7 @@ wipe-rag:
 	@echo ">>> WARNING: This operation will delete ALL indexed documents and metadata!"
 	@read -p "Are you sure? Type 'YES' to confirm: " confirm && [ "$$confirm" = "YES" ]
 	@echo ">>> Calling System Wipe API..."
-	curl -sk -X POST $(PROTOCOL)://localhost/api/rag/system/wipe | python3 -m json.tool
+	curl -sk -X POST $(PROTOCOL)://localhost/api/rag/wipe | python3 -m json.tool
 	@echo ">>> RAG system cleaned successfully."
 
 # -----------------------------------------------------------------------------
