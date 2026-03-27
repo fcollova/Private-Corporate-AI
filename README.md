@@ -186,11 +186,13 @@ sudo ./install.sh
 
 The installer guides you through:
 
-1. **Hardware Detection** — Automatic analysis of CPU, RAM and NVIDIA GPU
-2. **Mode Selection** — Choose between **FULL (GPU)** for maximum performance or **LITE (CPU)** for GPU-less servers
-3. **LLM Model Selection** — Choose the optimal model (e.g. Gemma 2, Llama 3.1, DeepSeek-R1)
-4. **Client Customization** — Enter company name and choose a color theme for interface branding
-5. **Credential Generation** — Automatic creation of unique secret keys and self-signed SSL certificates
+1. **Hardware Detection** — Automatic analysis of CPU, RAM and NVIDIA GPU.
+2. **Profile Selection** — **New in v0.2.0**:
+   - **SOLO Mode**: Optimized for professional studios (1-3 users). 5 containers, HTTP on port 80, integrated static console.
+   - **CORPORATE Mode**: Optimized for organizations. 7 containers, HTTPS on port 443, Redis cache for high concurrency.
+3. **Mode Selection** — Choose between **FULL (GPU)** for maximum performance or **LITE (CPU)** for GPU-less servers.
+4. **LLM Model Selection** — Choose the optimal model (e.g. Gemma 2, Llama 3.1, DeepSeek-R1).
+5. **Client Customization** — Enter company name and choose a color theme for interface branding.
 
 ### 3. Monitor Installation
 
@@ -220,37 +222,33 @@ Then navigate to `https://localhost`. Accept the security warning (self-signed c
 
 ## 🌐 Accessing the Interface
 
-After startup (allow 2–5 minutes for model download on first run):
+The access URL depends on the selected profile:
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| **Open WebUI** | `https://localhost` | Main chat interface |
-| **Document Console** | `https://localhost/console/` | Document and RAG domain management |
-| **RAG API Docs** | `https://localhost/rag-docs` | Interactive Swagger UI |
-| **RAG Health** | `https://localhost/api/health` | Ollama + Qdrant + Redis status |
+| Profile | Service | URL | Notes |
+|---------|---------|-----|-------|
+| **SOLO** | Open WebUI | `http://localhost` | Main chat (HTTP) |
+| **SOLO** | Console | `http://localhost/console/` | Static Document Console |
+| **CORPORATE** | Open WebUI | `https://localhost` | Main chat (HTTPS/SSL) |
+| **CORPORATE** | Console | `https://localhost/console/` | Containerized Console |
 
 ---
 
 ## ⚙️ Makefile Commands Reference
 
-The entire stack is managed via `make`. Here is the complete command reference by category.
+The entire stack is managed via a **dynamic `make` command** that automatically detects your profile and mode from the `.env` file.
 
 ### 🚀 Stack Management
 
 | Command | Description |
 |---------|-------------|
-| `make install` | **Interactive installation** (auto-detects hardware, configures GPU or CPU) |
-| `make setup` | Quick setup: creates `.env` and generates self-signed SSL certificates |
-| `make up-gpu` | Start in **FULL (NVIDIA GPU)** mode |
-| `make up-lite` | Start in **LITE (CPU-only)** mode |
-| `make restart-gpu` | Quick restart in FULL mode |
-| `make restart-lite` | Quick restart in LITE mode |
-| `make down` | Stop all services (FULL mode) |
-| `make down-lite` | Stop all services (LITE mode) |
+| `make install` | **Interactive installation** (Select Solo/Corporate and GPU/CPU) |
+| `make up` | Start the stack based on your `.env` configuration |
+| `make restart` | Quick restart of all services |
+| `make down` | Stop all services |
 | `make build` | Rebuild the RAG Backend image |
-| `make rebuild-rag` | Recreate and restart only the RAG Backend (hot-fix) |
-| `make reload-nginx` | Verify and reload Nginx configuration |
-| `make clean` | ⚠️ **Removes everything**: containers, networks and **data volumes** |
+| `make rebuild-rag` | Recreate and restart only the RAG Backend |
+| `make rebuild-console` | Recompile frontend (**Static for Solo**, Container for Corp) |
+
 
 ### 📊 Logging & Monitoring
 
@@ -258,14 +256,9 @@ The entire stack is managed via `make`. Here is the complete command reference b
 |---------|-------------|
 | `make status` | Health status and uptime of all containers |
 | `make logs` | Combined real-time logs for all services |
-| `make logs-rag` | RAG Backend specific logs (FastAPI) |
-| `make logs-init` | Monitor initial model download |
-| `make logs-ollama` | LLM inference engine logs |
-| `make logs-redis` | **NEW**: Redis cache logs |
 | `make monitor` | **Resource dashboard**: real-time CPU, RAM and Network |
 | `make gpu-monitor` | VRAM and GPU temperature monitoring (NVIDIA) |
-| `make logs-nginx` | Reverse proxy and HTTP traffic logs |
-| `make logs-webui` | Open WebUI chat interface logs |
+| `make health` | Verify connectivity (handles HTTP/HTTPS automatically) |
 
 ### 🤖 LLM Model Management
 

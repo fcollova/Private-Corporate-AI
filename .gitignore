@@ -7,10 +7,13 @@
 .env.local
 .env.backup*
 .gemini
+
+# File locali da escludere su Github
 GEMINI.md
 ROADMAP.md
 PCAI-integration.md
 PCAI-rag.md
+LANGFLOW_Integration.md
 
 # Certificati SSL (generati localmente)
 nginx/ssl/*.crt
@@ -22,7 +25,12 @@ doc/
 rag_backend/uploads/
 docs_volume/
 
-#GCP
+# Document Management Console Build solo mode
+console/node_modules/
+console/dist/
+console/.env.local
+
+# GCP
 GCP/
 
 # Python

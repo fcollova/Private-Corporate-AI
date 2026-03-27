@@ -1,9 +1,7 @@
 docker
 compose
 -f
-docker-compose.yaml
--f
-docker-compose.lite.yaml
+docker-compose.solo.yaml
 --env-file
 .env
 --env-file

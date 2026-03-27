@@ -12,6 +12,6 @@
   "deploy_mode":    "cpu",
   "llm_model":      "gemma2:2b",
   "domains":        "corporate_docs",
-  "installed_at":   "2026-03-22T11:09:50Z",
+  "installed_at":   "2026-03-26T10:05:24Z",
   "installer_ver":  "1.1.0"
 }

@@ -163,28 +163,28 @@ Se stai installando Private Corporate AI su **Windows tramite WSL2**, leggi atte
 
 ## 🚀 Installazione Rapida
 
-L'installazione è completamente automatizzata tramite uno script interattivo che configura l'intero ambiente (Docker, modelli, database, certificati) in base all'hardware rilevato.
+L'installazione è completamente automatizzata tramite uno script interattivo che configura l'intero ambiente (Docker, modelli, database, certificati) in base all'hardware rilevato e alle necessità di utilizzo.
 
 ### 1. Clona ed Esegui l'Installer
 
 ```bash
-git clone https://github.com/<your-org>/private-corporate-ai.git
+git clone https://github.com/fcollova/Private-Corporate-AI.git
 cd private-corporate-ai
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-> Sono supportati anche flag per installazioni non interattive: `./install.sh --gpu` oppure `./install.sh --cpu`
-
 ### 2. Passaggi della Procedura Guidata
 
 L'installer ti guiderà attraverso:
 
-1. **Rilevamento Hardware** — Analisi automatica di CPU, RAM e GPU NVIDIA
-2. **Scelta Modalità** — Selezione tra **FULL (GPU)** per massime prestazioni o **LITE (CPU)** per server senza GPU
-3. **Selezione Modello LLM** — Scelta del modello ottimale (es. Gemma 2, Llama 3.1, DeepSeek-R1)
-4. **Personalizzazione Cliente** — Inserimento del nome azienda e scelta del tema colore per il branding
-5. **Generazione Credenziali** — Creazione automatica di chiavi segrete univoche e certificati SSL self-signed
+1. **Rilevamento Hardware** — Analisi automatica di CPU, RAM e GPU NVIDIA.
+2. **Selezione Profilo** — **Novità v0.2.0**:
+   - **Profilo SOLO**: Ottimizzato per studi professionali (1-3 utenti). 5 container, HTTP su porta 80, console statica integrata.
+   - **Profilo CORPORATE**: Ottimizzato per aziende. 7 container, HTTPS su porta 443, cache Redis per alta concorrenza.
+3. **Scelta Modalità** — Selezione tra **FULL (GPU)** per massime prestazioni o **LITE (CPU)** per server senza GPU.
+4. **Selezione Modello LLM** — Scelta del modello ottimale (es. Gemma 2, Llama 3.1, DeepSeek-R1).
+5. **Personalizzazione Cliente** — Inserimento del nome azienda e scelta del tema colore per il branding.
 
 ### 3. Monitoraggio dell'Installazione
 
@@ -201,50 +201,43 @@ make monitor
 ### 4. Verifica Finale
 
 ```bash
-# Controlla lo stato di salute di tutti i servizi
+# Controlla lo stato di salute di tutti i servizi (rileva Solo/Corporate automaticamente)
 make health
 
 # Invia una domanda di test al RAG
 make test-chat
 ```
 
-Poi naviga su `https://localhost`. Accetta l'avviso di sicurezza (certificato self-signed) e verifica che appaia la schermata di login di Open WebUI.
-
 ---
 
 ## 🌐 Accesso all'Interfaccia
 
-Dopo l'avvio (attendere 2–5 minuti per il download dei modelli al primo avvio):
+L'URL di accesso dipende dal profilo selezionato:
 
-| Servizio | URL | Note |
-|----------|-----|------|
-| **Open WebUI** | `https://localhost` | Interfaccia chat principale |
-| **Document Console** | `https://localhost/console/` | Gestione documenti e domini RAG |
-| **RAG API Docs** | `https://localhost/rag-docs` | Swagger UI interattivo |
-| **RAG Health** | `https://localhost/api/health` | Status Ollama + Qdrant + Redis |
+| Profilo | Servizio | URL | Note |
+|---------|----------|-----|------|
+| **SOLO** | Open WebUI | `http://localhost` | Chat principale (HTTP) |
+| **SOLO** | Console | `http://localhost/console/` | Console Documenti Statica |
+| **CORPORATE** | Open WebUI | `https://localhost` | Chat principale (HTTPS/SSL) |
+| **CORPORATE** | Console | `https://localhost/console/` | Console in container |
 
 ---
 
 ## ⚙️ Comandi Makefile
 
-Lo stack viene gestito interamente tramite `make`. Di seguito l'elenco completo dei comandi suddivisi per categoria.
+Lo stack viene gestito tramite un **Makefile dinamico** che rileva automaticamente il profilo e la modalità dal file `.env`.
 
 ### 🚀 Gestione Stack
 
 | Comando | Descrizione |
 |---------|-------------|
-| `make install` | **Installazione interattiva** (rileva hardware, configura GPU o CPU) |
-| `make setup` | Setup rapido: crea `.env` e genera certificati SSL self-signed |
-| `make up-gpu` | Avvia in modalità **FULL (GPU NVIDIA)** |
-| `make up-lite` | Avvia in modalità **LITE (CPU-only)** |
-| `make restart-gpu` | Riavvio rapido in modalità FULL |
-| `make restart-lite` | Riavvio rapido in modalità LITE |
-| `make down` | Ferma tutti i servizi (modalità FULL) |
-| `make down-lite` | Ferma tutti i servizi (modalità LITE) |
+| `make install` | **Installazione interattiva** (Scelta Solo/Corporate e GPU/CPU) |
+| `make up` | Avvia lo stack basandosi sulla configurazione nel `.env` |
+| `make restart` | Riavvio rapido di tutti i servizi |
+| `make down` | Ferma tutti i servizi |
 | `make build` | Ricostruisce l'immagine del RAG Backend |
-| `make rebuild-rag` | Ricrea e riavvia solo il RAG Backend (hot-fix) |
-| `make reload-nginx` | Verifica e ricarica la configurazione di Nginx |
-| `make clean` | ⚠️ **Rimuove tutto**: container, reti e **volumi dati** |
+| `make rebuild-rag` | Ricrea e riavvia solo il RAG Backend |
+| `make rebuild-console` | Ricompila il frontend (**Statico per Solo**, Container per Corp) |
 
 ### 📊 Log e Monitoring
 
@@ -252,44 +245,10 @@ Lo stack viene gestito interamente tramite `make`. Di seguito l'elenco completo 
 |---------|-------------|
 | `make status` | Stato di salute e uptime di tutti i container |
 | `make logs` | Log combinati di tutti i servizi in tempo reale |
-| `make logs-rag` | Log specifici del RAG Backend (FastAPI) |
-| `make logs-init` | Monitora il download iniziale dei modelli |
-| `make logs-ollama` | Log del motore di inferenza LLM |
-| `make logs-redis` | **NUOVO**: Log della cache Redis |
+| `make logs-rag` | Log specifici del RAG Backend |
 | `make monitor` | **Dashboard risorse**: CPU, RAM e Rete in tempo reale |
 | `make gpu-monitor` | Monitoraggio VRAM e temperatura GPU (NVIDIA) |
-| `make logs-nginx` | Log del reverse proxy e traffico HTTP |
-| `make logs-webui` | Log dell'interfaccia chat Open WebUI |
-
-### 🤖 Gestione Modelli LLM
-
-| Comando | Descrizione |
-|---------|-------------|
-| `make list-models` | Elenca i modelli attualmente installati su Ollama |
-| `make active-model` | Mostra quale modello è attualmente caricato in RAM/VRAM |
-| `make pull-model MODEL=...` | Scarica un modello specifico (es. `MODEL=llama3:8b`) |
-| `make remove-model MODEL=...` | Rimuove un modello dal disco |
-| `make pull-models-lite` | Forza il download dei modelli ottimizzati per CPU |
-
-### 📁 Documenti e RAG (CLI)
-
-| Comando | Descrizione |
-|---------|-------------|
-| `make health` | Verifica la connettività tra RAG, Ollama, Qdrant e Redis |
-| `make upload-doc FILE=...` | Carica e indicizza un file (PDF, DOCX, TXT, MD, XLSX, PPTX) |
-| `make list-docs` | Elenca i documenti indicizzati nel database SQL dei metadati |
-| `make test-chat` | Invia una domanda al RAG e ricevi la risposta con fonti |
-| `make wipe-rag` | ⚠️ **Svuota il RAG**: cancella vettori, file, database SQL e cache Redis |
-| `make init-collection` | Inizializza manualmente la collezione Qdrant |
-
-### 💻 Document Management Console
-
-| Comando | Descrizione |
-|---------|-------------|
-| `make up-console` | Avvia specificamente il container della Console |
-| `make rebuild-console` | Ricompila da zero l'app React (Vite) |
-| `make logs-console` | Log del server di sviluppo/produzione console |
-| `make open-console` | Apre automaticamente l'URL della console nel browser |
+| `make health` | Verifica la connettività (gestisce HTTP/HTTPS automaticamente) |
 
 ### 🏢 Personalizzazione Cliente
 

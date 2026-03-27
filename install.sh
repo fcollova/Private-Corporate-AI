@@ -232,6 +232,73 @@ detect_hardware() {
     echo ""
 }
 
+# ── Selezione Profilo (SOLO vs CORPORATE) ───────────────────────────────────
+select_deploy_profile() {
+    log_section "Selezione Profilo di Utilizzo"
+
+    echo -e "  ${BOLD}Scegli il profilo di installazione:${NC}"
+    echo ""
+    echo -e "    ${GREEN}1)${NC} ${BOLD}Profilo SOLO${NC} (Consigliato per studi professionali)"
+    echo -e "       ${DIM}• 5 Container (senza Redis e Node dedicato)${NC}"
+    echo -e "       ${DIM}• Accesso diretto HTTP (porta 80)${NC}"
+    echo -e "       ${DIM}• < 2GB RAM idle (oltre LLM)${NC}"
+    echo ""
+    echo -e "    ${BLUE}2)${NC} ${BOLD}Profilo CORPORATE${NC} (Consigliato per aziende)"
+    echo -e "       ${DIM}• 7 Container (Full stack con Redis cache)${NC}"
+    echo -e "       ${DIM}• Proxy Nginx con SSL/TLS (porta 443)${NC}"
+    echo -e "       ${DIM}• Alta concorrenza e persistenza avanzata${NC}"
+    echo ""
+
+    echo -ne "  ${BOLD}Scelta [1/2, default=1]:${NC} "
+    read -r profile_choice
+    profile_choice="${profile_choice:-1}"
+
+    case "${profile_choice}" in
+        1) DEPLOY_PROFILE="solo" ;;
+        2) DEPLOY_PROFILE="corporate" ;;
+        *) DEPLOY_PROFILE="solo" ;;
+    esac
+
+    log_ok "Profilo selezionato: ${DEPLOY_PROFILE^^}"
+}
+
+# ── Build Console Static (solo per SOLO Mode) ────────────────────────────────
+build_console_static() {
+    if [[ "${DEPLOY_PROFILE}" != "solo" ]]; then
+        return
+    fi
+
+    log_step "Build statico della Console (SOLO Mode)"
+    
+    # Verifica se la cartella dist esiste già
+    if [[ -d "${SCRIPT_DIR}/console/dist" ]]; then
+        log_info "Cartella console/dist già presente."
+        echo -ne "  Vuoi ricostruire il frontend? [s/N]: "
+        read -r rebuild
+        if [[ ! "${rebuild}" =~ ^[sS]$ ]]; then
+            return
+        fi
+    fi
+
+    log_info "Utilizzo container Node.js per il build (nessuna dipendenza locale richiesta)..."
+    docker run --rm \
+        -v "${SCRIPT_DIR}/console:/app" \
+        -w /app \
+        node:20-alpine \
+        sh -c "npm install && npm run build" | tee -a "${LOG_FILE}" &
+    
+    local build_pid=$!
+    spinner "${build_pid}" "Build Console React"
+    wait "${build_pid}"
+    
+    if [[ -d "${SCRIPT_DIR}/console/dist" ]]; then
+        log_ok "Build Console completato ✓"
+    else
+        log_error "Errore durante il build della Console. Controlla install.log"
+        exit 1
+    fi
+}
+
 # ── Selezione Modalità ────────────────────────────────────────────────────────
 select_deploy_mode() {
     log_section "Selezione Modalità di Deploy"
@@ -763,6 +830,7 @@ generate_env_file() {
 
 # Modalità deploy
 DEPLOY_MODE='${DEPLOY_MODE}'
+DEPLOY_PROFILE='${DEPLOY_PROFILE:-corporate}'
 
 # LLM
 LLM_MODEL='${LLM_MODEL}'
@@ -849,14 +917,15 @@ patch_compose_for_cpu() {
     fi
 
     local compose_file="${SCRIPT_DIR}/docker-compose.yaml"
+    [[ "${DEPLOY_PROFILE}" == "solo" ]] && compose_file="${SCRIPT_DIR}/docker-compose.solo.yaml"
 
     # Controlla se il blocco nvidia è ancora presente
     if ! grep -q "driver: nvidia" "${compose_file}" 2>/dev/null; then
-        log_info "Blocco GPU già assente da docker-compose.yaml — skip"
+        log_info "Blocco GPU già assente da $(basename "${compose_file}") — skip"
         return
     fi
 
-    log_step "Rimozione blocco GPU da docker-compose.yaml (modalità LITE)"
+    log_step "Rimozione blocco GPU da $(basename "${compose_file}") (modalità LITE)"
 
     # Backup prima di modificare
     cp "${compose_file}" "${compose_file}.gpu-backup"
@@ -923,19 +992,25 @@ build_compose_cmd() {
     local env_flag=()
     [[ -f "${versions_file}" ]] && env_flag=(--env-file "${versions_file}")
 
-    if [[ "${DEPLOY_MODE}" == "gpu" ]]; then
-        COMPOSE_CMD=(docker compose --env-file .env "${env_flag[@]}")
-        COMPOSE_FILES="docker-compose.yaml"
+    if [[ "${DEPLOY_PROFILE}" == "solo" ]]; then
+        # Profilo SOLO: usa docker-compose.solo.yaml
+        COMPOSE_CMD=(docker compose -f docker-compose.solo.yaml --env-file .env "${env_flag[@]}")
+        COMPOSE_FILES="docker-compose.solo.yaml"
     else
-        COMPOSE_CMD=(docker compose
-            -f docker-compose.yaml
-            -f docker-compose.lite.yaml
-            --env-file .env
-            "${env_flag[@]}")
-        COMPOSE_FILES="docker-compose.yaml + docker-compose.lite.yaml"
+        # Profilo CORPORATE: usa docker-compose.yaml (+ override lite se cpu)
+        if [[ "${DEPLOY_MODE}" == "gpu" ]]; then
+            COMPOSE_CMD=(docker compose --env-file .env "${env_flag[@]}")
+            COMPOSE_FILES="docker-compose.yaml"
+        else
+            COMPOSE_CMD=(docker compose
+                -f docker-compose.yaml
+                -f docker-compose.lite.yaml
+                --env-file .env
+                "${env_flag[@]}")
+            COMPOSE_FILES="docker-compose.yaml + docker-compose.lite.yaml"
+        fi
     fi
 }
-
 # ── Build e Avvio Stack ───────────────────────────────────────────────────────
 build_and_start() {
     log_section "Build e Avvio Stack Docker"
@@ -1040,10 +1115,12 @@ wait_for_healthy() {
 
     # Test API RAG Backend
     log_step "Test API RAG Backend..."
+    local check_protocol="https"
+    [[ "${DEPLOY_PROFILE}" == "solo" ]] && check_protocol="http"
     local retries=0
     while [[ "${retries}" -lt 10 ]]; do
         local health_response
-        health_response=$(curl -sk https://localhost/api/rag/health 2>/dev/null || echo "")
+        health_response=$(curl -sk ${check_protocol}://localhost/api/rag/health 2>/dev/null || echo "")
         if [[ -n "${health_response}" ]]; then
             log_ok "API RAG Backend risponde ✓"
             echo ""
@@ -1067,6 +1144,7 @@ show_summary() {
     echo -e ""
     echo -e "${BOLD}  📋 Riepilogo Configurazione:${NC}"
     echo -e "  ┌─────────────────────────────────────────────┐"
+    echo -e "  │  Profilo:        ${BOLD}${DEPLOY_PROFILE^^}${NC}"
     echo -e "  │  Modalità:       ${BOLD}${DEPLOY_MODE^^}${NC}"
     echo -e "  │  Modello LLM:    ${BOLD}${LLM_MODEL}${NC}"
     echo -e "  │  Embedding:      ${EMBEDDING_MODEL}"
@@ -1089,10 +1167,14 @@ show_summary() {
     echo -e "  ${DIM}Registro installazione: ${SCRIPT_DIR}/branding/client.json${NC}"
     echo -e "  ${DIM}System prompt: ${SCRIPT_DIR}/rag_backend/system_prompt.txt${NC}"
     echo -e ""
+    local protocol="https"
+    [[ "${DEPLOY_PROFILE}" == "solo" ]] && protocol="http"
+
     echo -e "${BOLD}  🌐 Accesso:${NC}"
-    echo -e "  │  Open WebUI:    ${CYAN}https://${server_ip}${NC}"
-    echo -e "  │  API Swagger:   ${CYAN}https://${server_ip}/rag-docs${NC}"
-    echo -e "  │  Health:        ${CYAN}https://${server_ip}/api/rag/health${NC}"
+    echo -e "  │  Open WebUI:    ${CYAN}${protocol}://${server_ip}${NC}"
+    echo -e "  │  Console Docs:  ${CYAN}${protocol}://${server_ip}/console/${NC}"
+    echo -e "  │  API Swagger:   ${CYAN}${protocol}://${server_ip}/rag-docs${NC}"
+    echo -e "  │  Health:        ${CYAN}${protocol}://${server_ip}/api/rag/health${NC}"
     echo -e ""
     echo -e "${BOLD}  🔑 Credenziali (salvate in .env):${NC}"
     echo -e "  │  File .env:     ${SCRIPT_DIR}/.env"
@@ -1506,6 +1588,7 @@ main() {
     echo "=== Install Log — $(date) ===" > "${LOG_FILE}"
 
     show_banner
+    DEPLOY_PROFILE="corporate" # Default
     parse_args "$@"
 
     # Branch: solo riconfigurazione cliente (no reinstall stack)
@@ -1570,6 +1653,7 @@ main() {
     fi
 
     detect_hardware
+    select_deploy_profile
     select_deploy_mode
     select_llm_model
     configure_advanced
@@ -1580,6 +1664,7 @@ main() {
     echo ""
     echo -e "${BOLD}  📋 Riepilogo installazione:${NC}"
     echo -e "  ┌─────────────────────────────────────────────┐"
+    echo -e "  │  Profilo:      ${BOLD}${DEPLOY_PROFILE^^}${NC}"
     echo -e "  │  Modalità:     ${BOLD}${DEPLOY_MODE^^}${NC}"
     echo -e "  │  Modello LLM:  ${BOLD}${LLM_MODEL}${NC}"
     echo -e "  │  Embedding:    ${EMBEDDING_MODEL}"
@@ -1596,6 +1681,7 @@ main() {
     # Installazione
     install_docker
     install_nvidia_toolkit
+    build_console_static
     generate_ssl_certs
     generate_env_file
     apply_client_branding
