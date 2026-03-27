@@ -3,7 +3,7 @@
    AUTHOR: Francesco Collovà
    LICENSE: Apache License 2.0
    YEAR: 2026
-   DESCRIPTION: Main React application component for the Document Console.
+   DESCRIPTION: Main Redesigned Application Shell.
    ============================================================================= */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -15,24 +15,8 @@ import IndexingTest from './components/IndexingTest';
 import Monitoring from './components/Monitoring';
 import locales from './locales';
 
-const NavItem = ({ id, label, icon, currentView, setCurrentView }) => (
-  <div 
-    onClick={() => setCurrentView(id)}
-    style={{ 
-      padding: '12px 16px', borderRadius: '10px', cursor: 'pointer',
-      background: currentView === id ? `rgba(59, 130, 246, 0.1)` : 'transparent',
-      color: currentView === id ? '#f1f5f9' : '#64748b',
-      fontWeight: currentView === id ? 700 : 500,
-      display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.2s'
-    }}
-  >
-    <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-    {label}
-  </div>
-);
-
 const App = () => {
-  const [currentView, setCurrentView] = useState('knowledge'); // 'knowledge', 'indexing', 'monitoring'
+  const [currentView, setCurrentView] = useState('knowledge');
   const [selectedDomain, setSelectedDomain] = useState('corporate_docs');
   const [refresh, setRefresh] = useState(0);
   const [domains, setDomains] = useState([]);
@@ -40,24 +24,17 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [clientInfo, setClientInfo] = useState({
-    company: 'Private Corporate AI',
-    theme_color: '#3b82f6',
-    lang_code: 'it'
-  });
-
-  // Modal State
+  const [clientInfo, setClientInfo] = useState({ company: 'Private AI', theme_color: '#4f7fff', lang_code: 'it' });
+  
   const [modal, setModal] = useState({ isOpen: false, title: '', content: '', onConfirm: () => {}, confirmText: 'OK' });
-
   const pollingRef = useRef(null);
   
-  // Choose locale based on clientInfo (default to 'it')
   const t = locales[clientInfo.lang_code] || locales.it;
 
   const fetchData = async () => {
     try {
       const info = await api.clientInfo();
-      if (info && info.company) setClientInfo(info);
+      if (info?.company) setClientInfo(info);
       
       const doms = await api.listDomains();
       setDomains(Array.isArray(doms) ? doms : []);
@@ -75,9 +52,7 @@ const App = () => {
           pollingRef.current = null;
         }
       }
-    } catch (e) { 
-      console.error("Fetch error:", e); 
-    }
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => { 
@@ -93,9 +68,7 @@ const App = () => {
     try {
       await api.uploadDoc(file, selectedDomain);
       fetchData();
-    } catch (e) {
-      alert(t.errorUpload);
-    }
+    } catch (e) { alert(t.errorUpload); }
     setUploading(false);
   };
 
@@ -122,39 +95,28 @@ const App = () => {
     } catch (e) { alert(t.errorReindex); }
   };
 
-  const handleMove = (doc) => {
-    const newDomain = prompt(t.errorMove, selectedDomain); 
-    if (!newDomain || newDomain === selectedDomain) return;
-    api.moveDoc(doc.doc_id, { target_collection: newDomain })
-      .then(() => fetchData())
-      .catch(() => alert(t.errorMove));
-  };
-
   const handleCreateDomain = async () => {
     const name = prompt(t.promptNewDomain);
     if (!name) return;
     try {
       await api.createDomain(name);
       fetchData();
-    } catch (e) {
-      alert(t.errorNewDomain);
-    }
+    } catch (e) { alert(t.errorNewDomain); }
   };
 
   const filteredDocs = docs.filter(doc => 
     doc.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const primaryColor = clientInfo?.theme_color || '#3b82f6';
-  const companyName = clientInfo?.company || 'Private Corporate AI';
+  const stats = {
+    total: docs.length,
+    fragments: domains.find(d => d.name === selectedDomain)?.points_count || 0,
+    processing: docs.filter(d => ['queued', 'extracting', 'contextualizing', 'embedding'].includes(d.status)).length,
+    errors: docs.filter(d => d.status === 'failed').length
+  };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: '#0f172a', 
-      color: '#f8fafc',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    }}>
+    <div className="shell">
       <Modal 
         isOpen={modal.isOpen} 
         title={modal.title} 
@@ -165,200 +127,161 @@ const App = () => {
         {modal.content}
       </Modal>
 
-      {/* HEADER PRINCIPALE */}
-      <header style={{ 
-        background: '#1e293b', 
-        padding: '1rem 2rem', 
-        borderBottom: '1px solid #334155',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ 
-            background: `linear-gradient(135deg, ${primaryColor} 0%, color-mix(in srgb, ${primaryColor}, black 20%) 100%)`,
-            width: '40px', height: '40px', borderRadius: '10px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 'bold', fontSize: '18px', boxShadow: `0 0 15px color-mix(in srgb, ${primaryColor}, transparent 60%)`
-          }}>{companyName.substring(0, 2).toUpperCase()}</div>
+      {/* TOPBAR */}
+      <div className="topbar">
+        <div className="logo">
+          <div className="logo-mark">{clientInfo.company.substring(0, 2).toUpperCase()}</div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.025em' }}>{companyName}</h1>
-            <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>{t.title}</p>
+            <div className="logo-name">{clientInfo.company}</div>
+            <div className="logo-sub">DOCUMENT CONSOLE</div>
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            onClick={() => setRefresh(r => r + 1)}
-            style={{ 
-              background: '#334155', border: 'none', color: '#94a3b8', 
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 500
-            }}
-          >
-            {loading ? '...' : t.refresh}
+        <div className="topbar-sep"></div>
+        <div className="breadcrumb">
+          Knowledge Base › <span>{selectedDomain}</span>
+        </div>
+        <div className="topbar-actions">
+          <button className="btn-icon" title="Aggiorna" onClick={() => setRefresh(r => r + 1)} disabled={loading}>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M1 3v4h4M13 11v-4h-4M1 7A6 6 0 0012.5 9M13 7a6 6 0 00-11.5-2"/>
+            </svg>
           </button>
-          {currentView === 'knowledge' && (
-            <>
-              <button 
-                onClick={handleCreateDomain}
-                style={{ 
-                  background: '#334155', border: 'none', color: '#f1f5f9', 
-                  padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-                  fontSize: '0.9rem', fontWeight: 500
-                }}
-              >
-                {t.newDomain}
-              </button>
-              <input type="file" onChange={handleUpload} id="upload" style={{ display: 'none' }} />
-              <button 
-                onClick={() => document.getElementById('upload').click()}
-                disabled={uploading}
-                style={{ 
-                  background: primaryColor, border: 'none', color: 'white', 
-                  padding: '8px 18px', borderRadius: '8px', cursor: 'pointer',
-                  fontWeight: 600, fontSize: '0.9rem', boxShadow: `0 4px 6px -1px color-mix(in srgb, ${primaryColor}, transparent 70%)`
-                }}
-              >
-                {uploading ? t.uploading : t.upload}
-              </button>
-            </>
-          )}
+          <button className="btn" onClick={handleCreateDomain}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 1v10M1 6h10"/></svg>
+            Nuovo Dominio
+          </button>
+          <button className="btn btn-primary" onClick={() => document.getElementById('upload').click()} disabled={uploading}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 8V2M3 5l3-3 3 3M1 10h10"/></svg>
+            {uploading ? t.uploading : t.upload}
+          </button>
+          <input type="file" id="upload" style={{ display: 'none' }} onChange={handleUpload} />
         </div>
-      </header>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', minHeight: 'calc(100vh - 73px)' }}>
-        
-        {/* SIDEBAR NAVIGATION */}
-        <aside style={{ 
-          background: '#0f172a', 
-          borderRight: '1px solid #334155',
-          padding: '2rem 1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2rem'
-        }}>
-          <div>
-            <h3 style={{ fontSize: '0.7rem', color: '#475569', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.1em', fontWeight: 800 }}>Menu</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <NavItem id="knowledge" label={t.menuKnowledge} icon="📚" currentView={currentView} setCurrentView={setCurrentView} />
-              <NavItem id="indexing" label={t.menuIndexing} icon="⚙️" currentView={currentView} setCurrentView={setCurrentView} />
-              <NavItem id="index_test" label={t.menuTest} icon="🔍" currentView={currentView} setCurrentView={setCurrentView} />
-              <NavItem id="monitoring" label={t.menuMonitoring} icon="📊" currentView={currentView} setCurrentView={setCurrentView} />
-            </div>
-          </div>
-
-          {currentView === 'knowledge' && (
-            <div>
-              <h3 style={{ fontSize: '0.7rem', color: '#475569', textTransform: 'uppercase', marginBottom: '1.25rem', letterSpacing: '0.1em', fontWeight: 800 }}>{t.availableDomains}</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {Array.isArray(domains) && domains.map(d => (
-                  <div 
-                    key={d.name}
-                    onClick={() => setSelectedDomain(d.name)}
-                    style={{ 
-                      padding: '12px 16px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      background: selectedDomain === d.name ? `rgba(255, 255, 255, 0.05)` : 'transparent',
-                      border: selectedDomain === d.name ? `1px solid rgba(255, 255, 255, 0.1)` : '1px solid transparent',
-                      color: selectedDomain === d.name ? '#f1f5f9' : '#64748b',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '2px' }}>{d.name}</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{d.points_count} {t.fragments}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </aside>
-
-        {/* MAIN CONTENT */}
-        <main style={{ padding: '2.5rem', background: '#020617' }}>
-          
-          {currentView === 'knowledge' && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.025em' }}>{t.knowledgeBase}: <span style={{ color: primaryColor }}>{selectedDomain}</span></h2>
-                  <p style={{ color: '#64748b', margin: '8px 0 0 0', fontSize: '0.95rem' }}>{t.manageDocs}</p>
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="text" 
-                    placeholder={t.searchPlaceholder}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                      background: '#1e293b', border: '1px solid #334155', color: 'white',
-                      padding: '10px 16px', borderRadius: '8px', width: '300px',
-                      outline: 'none', fontSize: '0.9rem'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.2)' }}>
-                {loading && docs.length === 0 ? (
-                  <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>⌛</div>
-                    {t.loadingDocs}
-                  </div>
-                ) : (
-                  <DocTable 
-                    docs={filteredDocs} 
-                    onAction={handleMove}
-                    onDelete={handleDelete}
-                    onReindex={handleReindex}
-                    t={t}
-                  />
-                )}
-              </div>
-            </>
-          )}
-
-          {currentView === 'indexing' && (
-            <IndexingManagement key="indexing-view" t={t} primaryColor={primaryColor} selectedDomain={selectedDomain} />
-          )}
-
-          {currentView === 'index_test' && (
-            <IndexingTest key="index-test-view" t={t} primaryColor={primaryColor} selectedDomain={selectedDomain} />
-          )}
-
-          {currentView === 'monitoring' && (
-            <Monitoring t={t} primaryColor={primaryColor} />
-          )}
-
-        </main>
       </div>
 
-      {/* FOOTER */}
-      <footer style={{ 
-        background: '#0f172a', 
-        padding: '1rem 2rem', 
-        borderTop: '1px solid #334155',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontSize: '0.75rem',
-        color: '#64748b'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ 
-            background: 'rgba(51, 65, 85, 0.5)', 
-            padding: '4px 10px', 
-            borderRadius: '6px', 
-            fontSize: '0.65rem',
-            fontWeight: '800',
-            color: '#cbd5e1',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>{t.aiDisclosure}</span>
-          <span style={{ opacity: 0.8 }}>{t.aiDisclosureText}</span>
+      <div className="main-shell">
+        {/* SIDEBAR */}
+        <div className="sidebar">
+          <div className="sidebar-section">
+            <div className="sidebar-label">Navigazione</div>
+            <div className={`nav-item ${currentView === 'knowledge' ? 'active' : ''}`} onClick={() => setCurrentView('knowledge')}>
+              📚 {t.menuKnowledge}
+            </div>
+            <div className={`nav-item ${currentView === 'indexing' ? 'active' : ''}`} onClick={() => setCurrentView('indexing')}>
+              ⚙️ {t.menuIndexing}
+            </div>
+            <div className={`nav-item ${currentView === 'monitoring' ? 'active' : ''}`} onClick={() => setCurrentView('monitoring')}>
+              📊 {t.menuMonitoring}
+            </div>
+            <div className={`nav-item ${currentView === 'index_test' ? 'active' : ''}`} onClick={() => setCurrentView('index_test')}>
+              🔍 {t.menuTest}
+            </div>
+          </div>
+
+          <div className="sidebar-section" style={{ flex: 1, overflowY: 'auto' }}>
+            <div className="sidebar-label">{t.sidebarDomains}</div>
+            {domains.map(d => (
+              <div 
+                key={d.name} 
+                className={`domain-item ${selectedDomain === d.name ? 'active' : ''}`}
+                onClick={() => setSelectedDomain(d.name)}
+              >
+                <div className="domain-dot" style={{ background: selectedDomain === d.name ? 'var(--accent)' : 'var(--text3)' }}></div>
+                <div className="domain-info">
+                  <div className="domain-name">{d.name}</div>
+                  <div className="domain-count">{d.points_count} frammenti</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="sidebar-footer">
+            <div className="health-row">
+              <div className="health-dot"></div>
+              <div className="health-label">Backend RAG</div>
+              <div className="health-val">Online</div>
+            </div>
+          </div>
         </div>
-      </footer>
+
+        {/* CONTENT AREA */}
+        <div className="content">
+          {currentView === 'knowledge' && (
+            <>
+              <div className="content-header">
+                <div className="domain-title">
+                  <h1>{selectedDomain}</h1>
+                  <div className="domain-tag">ATTIVO</div>
+                </div>
+                <div className="domain-desc">{t.manageDocs}</div>
+              </div>
+
+              {/* STATS */}
+              <div className="stats-row">
+                <div className="stat-card">
+                  <div className="stat-label">Documenti</div>
+                  <div className="stat-value">{stats.total}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Frammenti</div>
+                  <div className="stat-value">{stats.fragments}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">In elaborazione</div>
+                  <div className="stat-value" style={{ color: 'var(--accent)' }}>{stats.processing}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Errori</div>
+                  <div className="stat-value" style={{ color: 'var(--red)' }}>{stats.errors}</div>
+                </div>
+              </div>
+
+              {/* TABLE */}
+              <div className="table-wrap">
+                <div className="table-toolbar">
+                  <div className="search-box">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text3)" strokeWidth="1.4" strokeLinecap="round">
+                      <circle cx="5" cy="5" r="3.5"/><path d="M7.8 7.8l2 2"/>
+                    </svg>
+                    <input placeholder={t.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  </div>
+                </div>
+                <DocTable 
+                  docs={filteredDocs} 
+                  onDelete={handleDelete} 
+                  onReindex={handleReindex} 
+                  t={t} 
+                />
+              </div>
+            </>
+          )}
+
+          {currentView === 'indexing' && <div style={{ padding: '24px' }}><IndexingManagement t={t} selectedDomain={selectedDomain} /></div>}
+          {currentView === 'index_test' && <div style={{ padding: '24px' }}><IndexingTest t={t} selectedDomain={selectedDomain} /></div>}
+          {currentView === 'monitoring' && <div style={{ padding: '24px' }}><Monitoring t={t} /></div>}
+        </div>
+      </div>
+
+      {/* STATUSBAR */}
+      <div className="statusbar">
+        <div className="sb-item">
+          <div className="sb-dot" style={{ background: 'var(--green)' }}></div>
+          Sistema operativo
+        </div>
+        <div className="sb-sep"></div>
+        <div className="sb-item">{stats.processing} elaborazioni in corso</div>
+        {stats.errors > 0 && (
+          <>
+            <div className="sb-sep"></div>
+            <div className="sb-item" style={{ color: 'var(--red)' }}>{stats.errors} errore/i riscontrato/i</div>
+          </>
+        )}
+        <div className="ai-badge">
+          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+            <circle cx="5" cy="5" r="3.5"/><path d="M3.5 5h3M5 3.5v3"/>
+          </svg>
+          EU AI Act Compliant · {t.aiDisclosureText}
+        </div>
+      </div>
     </div>
   );
 };

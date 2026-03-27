@@ -7,8 +7,10 @@
 .env.local
 .env.backup*
 .gemini
+.claude
 
 # File locali da escludere su Github
+CLAUDE.md
 GEMINI.md
 ROADMAP.md
 PCAI-integration.md
