@@ -1568,12 +1568,17 @@ fix_ownership() {
         [[ -f "${f}" ]] && chown "${real_user}:${real_group}" "${f}"
     done
 
-    # Directory generate dallo script (ssl, log nginx)
+    # Directory generate dallo script (ssl, log nginx, console build)
     local dirs=(
         "${SCRIPT_DIR}/nginx/ssl"
+        "${SCRIPT_DIR}/console/dist"
+        "${SCRIPT_DIR}/console/node_modules"
     )
     for d in "${dirs[@]}"; do
-        [[ -d "${d}" ]] && chown -R "${real_user}:${real_group}" "${d}"
+        if [[ -d "${d}" ]]; then
+            chown -R "${real_user}:${real_group}" "${d}"
+            log_info "  $(basename "${d}")/ → proprietà corretta"
+        fi
     done
 
     # Mantieni i permessi restrittivi sulla chiave privata SSL

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-03-27
+
+### Added
+- **New "Solo" Deployment Profile**: A lightweight stack (5 containers) optimized for professional studios (1-3 users) using HTTP on port 80 and integrated static console.
+- **Dedicated "Index Test" View**: Isolated retrieval testing into a separate console page to improve focus management and UI stability.
+- **Sidebar "Index Test" Menu**: Added a new navigation item with localized labels ("Index Test" in both IT/EN).
+
+### Changed
+- **Refactored Console Components**: Moved `Card`, `NavItem`, and static styles outside main render functions to prevent unnecessary unmounting and focus loss.
+- **Optimized Console Build**: Updated `make rebuild-console` to automatically reload Nginx in Solo mode and ensure correct UID/GID ownership.
+
+### Fixed
+- **Input Focus Loss**: Resolved a persistent bug where indexing test inputs would lose focus during typing due to component recreation.
+- **UI Layout Overlap**: Fixed a CSS overlap where the test query input could physically cover the "Run Test" button.
+- **Nginx Config Persistence**: Fixed an issue where rebuilding the console in Solo mode wouldn't reflect changes until a manual Nginx reload.
+- **Improved Installer Ownership**: Updated `install.sh` to correctly restore user ownership for `console/dist` and `console/node_modules` after root installation, preventing permission errors.
+- **Permission Errors**: Fixed `EACCES` errors when running `npm install` inside the console after a sudo-based installation.
+
 ## [0.2.0] - 2026-03-21
 
 ### Added

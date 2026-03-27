@@ -4,13 +4,13 @@
 
 A complete, production-ready, 100% open-source stack to deploy LLMs and RAG (*Retrieval-Augmented Generation*) **inside** your corporate infrastructure. Zero data sent to external servers. Zero cloud vendor dependencies. Full GDPR compliance.
 
-> ⚠️ **Status: Active Development — v0.2.0**  
+> ⚠️ **Status: Active Development — v0.2.1**  
 > This project is under active development. APIs and configurations may change between releases. See [ROADMAP.md](./ROADMAP.md) for the planned feature timeline.
 
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/fcollova/Private-Corporate-AI/issues)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](./Release.txt)
+[![Version](https://img.shields.io/badge/version-0.2.1-orange.svg)](./Release.txt)
 [![Status](https://img.shields.io/badge/status-active%20development-yellow.svg)]()
 [![Docker](https://img.shields.io/badge/Docker-Compose_v3.9-2496ED?logo=docker)](https://docs.docker.com/compose/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
@@ -95,7 +95,7 @@ The two-network separation ensures that the LLM inference engine and vector data
 
 ---
 
-## ⚡ RAG Backend Highlights (v0.2.0)
+## ⚡ RAG Backend Highlights (v0.2.1)
 
 The backend has been re-architected for corporate stability and performance:
 
@@ -187,7 +187,7 @@ sudo ./install.sh
 The installer guides you through:
 
 1. **Hardware Detection** — Automatic analysis of CPU, RAM and NVIDIA GPU.
-2. **Profile Selection** — **New in v0.2.0**:
+2. **Profile Selection** — **New in v0.2.1**:
    - **SOLO Mode**: Optimized for professional studios (1-3 users). 5 containers, HTTP on port 80, integrated static console.
    - **CORPORATE Mode**: Optimized for organizations. 7 containers, HTTPS on port 443, Redis cache for high concurrency.
 3. **Mode Selection** — Choose between **FULL (GPU)** for maximum performance or **LITE (CPU)** for GPU-less servers.

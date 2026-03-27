@@ -4,11 +4,11 @@
 
 Uno stack completo, production-ready e 100% open source per portare LLM e RAG (*Retrieval-Augmented Generation*) **dentro** la tua infrastruttura aziendale. Zero dati verso server esterni. Zero dipendenze da vendor cloud. Piena conformità GDPR.
 
-> ⚠️ **Stato: Sviluppo Attivo — v0.2.0**  
+> ⚠️ **Stato: Sviluppo Attivo — v0.2.1**  
 > Questo progetto è in sviluppo attivo. API e configurazioni potrebbero cambiare tra una release e l'altra. Consulta [ROADMAP.md](./ROADMAP.md) per la pianificazione delle funzionalità.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Version](https://img.shields.io/badge/versione-0.2.0-orange.svg)](./Release.txt)
+[![Version](https://img.shields.io/badge/versione-0.2.1-orange.svg)](./Release.txt)
 [![Status](https://img.shields.io/badge/stato-sviluppo%20attivo-yellow.svg)]()
 [![Docker](https://img.shields.io/badge/Docker-Compose_v3.9-2496ED?logo=docker)](https://docs.docker.com/compose/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
@@ -89,7 +89,7 @@ La separazione in due reti garantisce che il motore di inferenza LLM e il databa
 
 ---
 
-## ⚡ RAG Backend Highlights (v0.2.0)
+## ⚡ RAG Backend Highlights (v0.2.1)
 
 Il backend è stato riprogettato per garantire stabilità e prestazioni di livello corporate:
 
@@ -179,7 +179,7 @@ sudo ./install.sh
 L'installer ti guiderà attraverso:
 
 1. **Rilevamento Hardware** — Analisi automatica di CPU, RAM e GPU NVIDIA.
-2. **Selezione Profilo** — **Novità v0.2.0**:
+2. **Selezione Profilo** — **Novità v0.2.1**:
    - **Profilo SOLO**: Ottimizzato per studi professionali (1-3 utenti). 5 container, HTTP su porta 80, console statica integrata.
    - **Profilo CORPORATE**: Ottimizzato per aziende. 7 container, HTTPS su porta 443, cache Redis per alta concorrenza.
 3. **Scelta Modalità** — Selezione tra **FULL (GPU)** per massime prestazioni o **LITE (CPU)** per server senza GPU.

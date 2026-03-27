@@ -11,8 +11,25 @@ import { api } from './api/ragClient';
 import DocTable from './components/DocTable';
 import Modal from './components/Modal';
 import IndexingManagement from './components/IndexingManagement';
+import IndexingTest from './components/IndexingTest';
 import Monitoring from './components/Monitoring';
 import locales from './locales';
+
+const NavItem = ({ id, label, icon, currentView, setCurrentView }) => (
+  <div 
+    onClick={() => setCurrentView(id)}
+    style={{ 
+      padding: '12px 16px', borderRadius: '10px', cursor: 'pointer',
+      background: currentView === id ? `rgba(59, 130, 246, 0.1)` : 'transparent',
+      color: currentView === id ? '#f1f5f9' : '#64748b',
+      fontWeight: currentView === id ? 700 : 500,
+      display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.2s'
+    }}
+  >
+    <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+    {label}
+  </div>
+);
 
 const App = () => {
   const [currentView, setCurrentView] = useState('knowledge'); // 'knowledge', 'indexing', 'monitoring'
@@ -131,22 +148,6 @@ const App = () => {
   const primaryColor = clientInfo?.theme_color || '#3b82f6';
   const companyName = clientInfo?.company || 'Private Corporate AI';
 
-  const NavItem = ({ id, label, icon }) => (
-    <div 
-      onClick={() => setCurrentView(id)}
-      style={{ 
-        padding: '12px 16px', borderRadius: '10px', cursor: 'pointer',
-        background: currentView === id ? `rgba(59, 130, 246, 0.1)` : 'transparent',
-        color: currentView === id ? '#f1f5f9' : '#64748b',
-        fontWeight: currentView === id ? 700 : 500,
-        display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.2s'
-      }}
-    >
-      <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-      {label}
-    </div>
-  );
-
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -241,9 +242,10 @@ const App = () => {
           <div>
             <h3 style={{ fontSize: '0.7rem', color: '#475569', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.1em', fontWeight: 800 }}>Menu</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <NavItem id="knowledge" label={t.menuKnowledge} icon="📚" />
-              <NavItem id="indexing" label={t.menuIndexing} icon="⚙️" />
-              <NavItem id="monitoring" label={t.menuMonitoring} icon="📊" />
+              <NavItem id="knowledge" label={t.menuKnowledge} icon="📚" currentView={currentView} setCurrentView={setCurrentView} />
+              <NavItem id="indexing" label={t.menuIndexing} icon="⚙️" currentView={currentView} setCurrentView={setCurrentView} />
+              <NavItem id="index_test" label={t.menuTest} icon="🔍" currentView={currentView} setCurrentView={setCurrentView} />
+              <NavItem id="monitoring" label={t.menuMonitoring} icon="📊" currentView={currentView} setCurrentView={setCurrentView} />
             </div>
           </div>
 
@@ -319,7 +321,11 @@ const App = () => {
           )}
 
           {currentView === 'indexing' && (
-            <IndexingManagement t={t} primaryColor={primaryColor} selectedDomain={selectedDomain} />
+            <IndexingManagement key="indexing-view" t={t} primaryColor={primaryColor} selectedDomain={selectedDomain} />
+          )}
+
+          {currentView === 'index_test' && (
+            <IndexingTest key="index-test-view" t={t} primaryColor={primaryColor} selectedDomain={selectedDomain} />
           )}
 
           {currentView === 'monitoring' && (

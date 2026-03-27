@@ -232,10 +232,12 @@ up-console:
 rebuild-console:
 	@if [ "$(DEPLOY_PROFILE)" = "solo" ]; then \
 		echo ">>> Rebuilding static console for SOLO mode..."; \
-		docker run --rm -v $(shell pwd)/console:/app -w /app node:20-alpine sh -c "npm install && npm run build"; \
+		docker run --rm -u $(shell id -u):$(shell id -g) -v $(shell pwd)/console:/app -w /app node:20-alpine sh -c "npm install && npm run build"; \
 		echo ">>> Static files rebuilt in console/dist/"; \
+		echo ">>> Reloading Nginx to serve new files..."; \
+		docker exec corporate_ai_nginx nginx -s reload; \
 	else \
-		$(COMPOSE) build --no-cache console && $(COMPOSE) up -d --force-recreate console; \
+		$(COMPOSE) run --rm -u $(shell id -u):$(shell id -g) console sh -c "npm install && npm run build" && $(COMPOSE) build --no-cache console && $(COMPOSE) up -d --force-recreate console; \
 	fi
 
 ## Real-time console logs
@@ -311,7 +313,7 @@ RESET  := $(shell tput -Txterm sgr0)
 help:
 	@echo ""
 	@echo "$(WHITE)Private Corporate AI — Command Line Interface$(RESET)"
-	@echo "$(DIM)Versione 0.2.0 (Active Profile: $(DEPLOY_PROFILE))$(RESET)"
+	@echo "$(DIM)Versione 0.2.1 (Active Profile: $(DEPLOY_PROFILE))$(RESET)"
 	@echo ""
 	@echo "$(CYAN)USAGE:$(RESET)"
 	@echo "  make $(GREEN)<target>$(RESET)"
