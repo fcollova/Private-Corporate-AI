@@ -13,9 +13,12 @@
 CLAUDE.md
 GEMINI.md
 ROADMAP.md
+RAG_ROADMAP.md
 PCAI-integration.md
 PCAI-rag.md
 LANGFLOW_Integration.md
+PCAI_rag_pageindex.md
+rag_catalog_v1.0.md
 
 # Certificati SSL (generati localmente)
 nginx/ssl/*.crt

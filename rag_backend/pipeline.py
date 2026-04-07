@@ -85,31 +85,108 @@ def get_document_loader(file_path: str, file_ext: str):
         raise ValueError(f"Formato file non supportato: {ext}")
     return loaders[ext]()
 
-async def generate_contextual_prefix(full_text: str, chunk_content: str, filename: str) -> str:
+def extract_document_structure(full_text: str, filename: str) -> str:
+    """
+    Estrae la struttura del documento dal Markdown senza chiamate LLM.
+    Funziona su output di PyMuPDF4LLM e MarkItDown che producono già Markdown.
+
+    Raccoglie: headings (#/##/###), prima riga di ogni sezione, intestazioni tabelle.
+    Costo: zero — pura analisi testuale.
+    """
+    lines = full_text.splitlines()
+    structure_lines = []
+    prev_was_heading = False
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            prev_was_heading = False
+            continue
+
+        # Headings Markdown
+        if stripped.startswith("#"):
+            structure_lines.append(stripped[:120])
+            prev_was_heading = True
+            continue
+
+        # Prima riga di testo dopo un heading (intro della sezione)
+        if prev_was_heading and not stripped.startswith("|") and not stripped.startswith("-"):
+            structure_lines.append("  → " + stripped[:100])
+            prev_was_heading = False
+            continue
+
+        # Intestazione di tabella Markdown (riga con | che non è separatore ---)
+        if stripped.startswith("|") and "---" not in stripped:
+            # Prendi solo la prima riga di ogni tabella
+            if i == 0 or not lines[i - 1].strip().startswith("|"):
+                structure_lines.append("  [tabella] " + stripped[:100])
+            continue
+
+        prev_was_heading = False
+
+    if not structure_lines:
+        # Fallback per documenti senza headings: prime 3 righe non vuote
+        non_empty = [l.strip() for l in lines if l.strip()][:3]
+        structure_lines = non_empty
+
+    structure = "\n".join(structure_lines[:60])  # max 60 voci
+    logger.info(f"Struttura estratta per '{filename}': {len(structure_lines)} elementi, {len(structure)} caratteri")
+    return f"Documento: {filename}\n{structure}"
+
+
+async def generate_document_summary(doc_structure: str, filename: str) -> str:
+    """
+    Genera un riassunto semantico del documento a partire dalla struttura Markdown estratta.
+    Input compatto (heading + intro sezioni) → call LLM veloce.
+    Chiamata una sola volta per documento, riutilizzata per tutti i chunk.
+    """
+    llm = rag.get_llm()
+
+    prompt = f"""Hai la struttura del documento '{filename}', estratta dai suoi heading e dalle introduzioni di ogni sezione:
+
+{doc_structure}
+
+Per ogni sezione presente nella struttura, scrivi una riga che ne descriva il contenuto e lo scopo (max 20 parole per riga).
+Aggiungi in testa una riga che identifichi la tipologia del documento e il suo scopo generale.
+Formato atteso:
+Tipologia: <tipo documento> — <scopo generale>
+- <Titolo sezione>: <descrizione contenuto>
+- <Titolo sezione>: <descrizione contenuto>
+...
+RISPOSTA:"""
+
+    try:
+        summary = await asyncio.to_thread(llm.invoke, prompt)
+        logger.info(f"Riassunto semantico generato per '{filename}' ({len(summary.strip())} caratteri)")
+        return summary.strip()
+    except Exception as e:
+        logger.warning(f"Errore generazione riassunto per '{filename}': {e}. Uso struttura grezza come fallback.")
+        return doc_structure
+
+
+async def generate_contextual_prefix(doc_structure: str, chunk_content: str, filename: str) -> str:
     """
     Genera un prefisso di contesto per il chunk utilizzando l'LLM locale.
     Implementazione ispirata alla tecnica 'Contextual Retrieval' di Anthropic.
+    Riceve la struttura estratta dal Markdown (headings + intro sezioni) — zero costo,
+    copre l'intero documento indipendentemente dalla lunghezza.
     """
     llm = rag.get_llm()
-    # Limitiamo il testo completo per evitare di superare la context window dell'LLM di supporto
-    doc_context = full_text[:4000] 
-    
-    prompt = f"""Analizza questo estratto dal documento '{filename}'.
-DOCUMENTO INTERO (estratto):
-{doc_context}
+
+    prompt = f"""Hai la struttura del documento '{filename}' (headings e sezioni):
+{doc_structure}
 ---
-ESTRATTO SPECIFICO:
+ESTRATTO SPECIFICO DA CONTESTUALIZZARE:
 {chunk_content}
 ---
-Fornisci una brevissima frase (massimo 15 parole) che spieghi a quale sezione appartiene l'estratto e il suo contesto generale nel documento.
+In base alla struttura del documento, fornisci una brevissima frase (massimo 15 parole) che indichi a quale sezione appartiene questo estratto e il suo ruolo nel documento.
 RISPOSTA:"""
-    
+
     try:
-        # Usiamo un timeout ridotto per non rallentare troppo l'indicizzazione
         context = await asyncio.to_thread(llm.invoke, prompt)
         return f"[CONTESTO: {context.strip()}] "
     except Exception as e:
-        logger.warning(f"Errore generazione contesto per chunk: {e}")
+        logger.warning(f"Errore generazione contesto per chunk di '{filename}': {e}")
         return ""
 
 async def update_document_status(doc_id: str, status: DocumentStatus, progress: int = 0, error: str = None):
@@ -146,13 +223,15 @@ async def process_document(file_path: str, filename: str, doc_id: str, collectio
 
         # 2. Arricchimento Parallelo (CONTEXTUALIZING)
         await update_document_status(doc_id, DocumentStatus.CONTEXTUALIZING, progress=30)
-        logger.info(f"Generazione contesto parallela per {len(chunks)} chunk di {filename}...")
-        
+        doc_structure = extract_document_structure(full_doc_text, filename)
+        doc_summary = await generate_document_summary(doc_structure, filename)
+
+        logger.info(f"Generazione contesto parallela per {len(chunks)} chunk di '{filename}'...")
         semaphore = asyncio.Semaphore(settings.ollama_num_parallel)
-        
+
         async def process_chunk_with_context(i, chunk):
             async with semaphore:
-                prefix = await generate_contextual_prefix(full_doc_text, chunk.page_content, filename)
+                prefix = await generate_contextual_prefix(doc_summary, chunk.page_content, filename)
                 chunk.page_content = prefix + chunk.page_content
                 
                 is_table = "|" in chunk.page_content and "---" in chunk.page_content
