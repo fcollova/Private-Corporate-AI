@@ -71,6 +71,8 @@ services:
     restart: unless-stopped
     networks:
       - backend_net
+    ports:
+      - "127.0.0.1:11434:11434"         # Esposto solo su localhost per accesso diretto (Claude Code, dev tools)
     volumes:
       - ollama_data:/root/.ollama       # Persistenza modelli
     environment:

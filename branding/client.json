@@ -10,8 +10,8 @@
   "theme_color":    "#1A3A5C",
   "theme_name":     "blue",
   "deploy_mode":    "cpu",
-  "llm_model":      "gemma2:2b",
+  "llm_model":      "gemma4:e2b",
   "domains":        "corporate_docs",
-  "installed_at":   "2026-03-27T14:17:11Z",
+  "installed_at":   "2026-04-07T07:49:35Z",
   "installer_ver":  "1.1.0"
 }

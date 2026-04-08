@@ -404,75 +404,78 @@ select_llm_model() {
     if [[ "${DEPLOY_MODE}" == "gpu" ]]; then
         echo -e "  ${BOLD}Modelli disponibili per modalità GPU:${NC}"
         echo ""
-        echo -e "  ${GREEN}1)${NC} ${BOLD}gemma2:9b${NC}           ${DIM}~8 GB VRAM  — Ottimo ITA/ENG, RAG documentale${NC} ${GREEN}[CONSIGLIATO]${NC}"
-        echo -e "  ${GREEN}2)${NC} ${BOLD}mistral:7b${NC}          ${DIM}~6 GB VRAM  — Veloce e bilanciato${NC}"
-        echo -e "  ${GREEN}3)${NC} ${BOLD}llama3.1:8b${NC}         ${DIM}~6 GB VRAM  — Meta, multilingua${NC}"
-        echo -e "  ${GREEN}4)${NC} ${BOLD}deepseek-r1:14b${NC}     ${DIM}~12 GB VRAM — Ragionamento avanzato${NC}"
-        echo -e "  ${GREEN}5)${NC} ${BOLD}mixtral:8x7b${NC}        ${DIM}~26 GB VRAM — MoE, qualità massima (>24 GB richiesti)${NC}"
-        echo -e "  ${GREEN}6)${NC} ${BOLD}Modello personalizzato${NC}"
+        echo -e "  ${GREEN}1)${NC} ${BOLD}gemma4:26b${NC}           ${DIM}~16 GB VRAM — MoE (Mixture of Experts)${NC} ${GREEN}[CONSIGLIATO]${NC}"
+        echo -e "  ${GREEN}2)${NC} ${BOLD}gemma2:9b${NC}            ${DIM}~8 GB VRAM  — Ottimo ITA/ENG, RAG documentale${NC}"
+        echo -e "  ${GREEN}3)${NC} ${BOLD}llama3.1:8b${NC}          ${DIM}~6 GB VRAM  — Meta, multilingua${NC}"
+        echo -e "  ${GREEN}4)${NC} ${BOLD}deepseek-r1:14b${NC}      ${DIM}~12 GB VRAM — Ragionamento avanzato${NC}"
+        echo -e "  ${GREEN}5)${NC} ${BOLD}gemma4:31b${NC}           ${DIM}~26 GB VRAM — Google, qualità massima${NC}"
+        echo -e "  ${GREEN}6)${NC} ${BOLD}mistral:7b${NC}           ${DIM}~6 GB VRAM  — Veloce e bilanciato${NC}"
+        echo -e "  ${GREEN}7)${NC} ${BOLD}mixtral:8x7b${NC}         ${DIM}~26 GB VRAM — MoE, alta qualità (>24 GB VRAM)${NC}"
+        echo -e "  ${GREEN}8)${NC} ${BOLD}Modello personalizzato${NC}"
         echo ""
-        echo -ne "  ${BOLD}Scelta [1-6, default=1]:${NC} "
+        echo -ne "  ${BOLD}Scelta [1-8, default=1]:${NC} "
         read -r choice
         case "${choice:-1}" in
-            1) LLM_MODEL="gemma2:9b" ;;
-            2) LLM_MODEL="mistral:7b" ;;
+            1) LLM_MODEL="gemma4:26b" ;;
+            2) LLM_MODEL="gemma2:9b" ;;
             3) LLM_MODEL="llama3.1:8b" ;;
             4) LLM_MODEL="deepseek-r1:14b" ;;
-            5) LLM_MODEL="mixtral:8x7b" ;;
-            6)
+            5) LLM_MODEL="gemma4:31b" ;;
+            6) LLM_MODEL="mistral:7b" ;;
+            7) LLM_MODEL="mixtral:8x7b" ;;
+            8)
                 echo -ne "  Inserisci il nome del modello Ollama (es: phi3:medium): "
                 read -r LLM_MODEL
-                LLM_MODEL="${LLM_MODEL:-gemma2:9b}"
+                LLM_MODEL="${LLM_MODEL:-gemma4:26b}"
                 ;;
-            *) LLM_MODEL="gemma2:9b" ;;
+            *) LLM_MODEL="gemma4:26b" ;;
         esac
     else
         # Modalità LITE (CPU)
         # Suggerisce modello in base alla RAM disponibile
-        local suggested_model="phi3:mini"
+        local suggested_model="gemma4:e2b"
         local suggested_reason="RAM disponibile: ${RAM_GB} GB"
         if [[ "${RAM_GB}" -ge 16 ]]; then
-            suggested_model="qwen2.5:7b-instruct-q4_K_M"
-            suggested_reason="RAM >= 16 GB: puoi usare il modello migliore per italiano"
-        elif [[ "${RAM_GB}" -ge 12 ]]; then
-            suggested_model="mistral:7b-instruct-q4_K_M"
-            suggested_reason="RAM >= 12 GB: ottimo bilanciamento qualità/velocità"
+            suggested_model="gemma4:e4b"
+            suggested_reason="RAM >= 16 GB: Gemma 4 Edge 4.5B offre prestazioni eccellenti"
         elif [[ "${RAM_GB}" -ge 8 ]]; then
-            suggested_model="llama3.2:3b"
-            suggested_reason="RAM >= 8 GB: modello leggero e capace"
+            suggested_model="gemma4:e2b"
+            suggested_reason="RAM >= 8 GB: Gemma 4 Edge 2.3B è ottimale per CPU"
         fi
 
         echo -e "  ${BOLD}Modelli raccomandati per modalità LITE (CPU-only):${NC}"
-        echo -e "  ${DIM}Tutti i modelli q4_K_M sono quantizzati a 4-bit: ~97% qualità, 60% meno RAM${NC}"
+        echo -e "  ${DIM}Gemma 4 Edge utilizza PLE per alta qualità su CPU${NC}"
         echo ""
-        echo -e "  ${GREEN}1)${NC} ${BOLD}gemma2:2b${NC}                     ${DIM}~1.6 GB RAM — Ultra-compatto, test${NC}"
-        echo -e "  ${GREEN}2)${NC} ${BOLD}phi3:mini${NC}                     ${DIM}~2.3 GB RAM — Microsoft, veloce${NC}"
-        echo -e "  ${GREEN}3)${NC} ${BOLD}llama3.2:3b${NC}                   ${DIM}~2.0 GB RAM — Meta, bilanciato${NC}"
-        echo -e "  ${GREEN}4)${NC} ${BOLD}mistral:7b-instruct-q4_K_M${NC}   ${DIM}~4.1 GB RAM — Buona qualità ITA${NC} ${YELLOW}[16GB RAM]${NC}"
-        echo -e "  ${GREEN}5)${NC} ${BOLD}qwen2.5:7b-instruct-q4_K_M${NC}   ${DIM}~4.4 GB RAM — Top per italiano${NC} ${GREEN}[CONSIGLIATO 16GB+]${NC}"
-        echo -e "  ${GREEN}6)${NC} ${BOLD}Modello personalizzato${NC}"
+        echo -e "  ${GREEN}1)${NC} ${BOLD}gemma4:e2b${NC}                   ${DIM}~4.0 GB RAM — Nuovo standard Edge${NC}"
+        echo -e "  ${GREEN}2)${NC} ${BOLD}gemma4:e4b${NC}                   ${DIM}~7.5 GB RAM — Qualità superiore${NC} ${GREEN}[CONSIGLIATO]${NC}"
+        echo -e "  ${GREEN}3)${NC} ${BOLD}gemma2:2b${NC}                    ${DIM}~1.6 GB RAM — Ultra-compatto, veloce${NC}"
+        echo -e "  ${GREEN}4)${NC} ${BOLD}llama3.2:3b${NC}                  ${DIM}~2.0 GB RAM — Meta, bilanciato${NC}"
+        echo -e "  ${GREEN}5)${NC} ${BOLD}qwen2.5:7b-instruct-q4_K_M${NC}   ${DIM}~4.4 GB RAM — Top per italiano${NC}"
+        echo -e "  ${GREEN}6)${NC} ${BOLD}mistral:7b-instruct-q4_K_M${NC}   ${DIM}~4.1 GB RAM — Qualità ITA consolidata${NC}"
+        echo -e "  ${GREEN}7)${NC} ${BOLD}phi3:mini${NC}                    ${DIM}~2.3 GB RAM — Microsoft, affidabile${NC}"
+        echo -e "  ${GREEN}8)${NC} ${BOLD}Modello personalizzato${NC}"
         echo ""
         echo -e "  ${DIM}Suggerimento basato sulla RAM (${RAM_GB} GB): ${BOLD}${suggested_model}${NC}"
         echo -e "  ${DIM}(${suggested_reason})${NC}"
         echo ""
-        echo -ne "  ${BOLD}Scelta [1-6, default basato su RAM]:${NC} "
+        echo -ne "  ${BOLD}Scelta [1-8, default basato su RAM]:${NC} "
         read -r choice
 
-        local default_choice=2
-        [[ "${RAM_GB}" -ge 16 ]] && default_choice=5
-        [[ "${RAM_GB}" -ge 12 ]] && [[ "${RAM_GB}" -lt 16 ]] && default_choice=4
-        [[ "${RAM_GB}" -ge 8  ]] && [[ "${RAM_GB}" -lt 12 ]] && default_choice=3
+        local default_choice=1
+        [[ "${RAM_GB}" -ge 16 ]] && default_choice=2
 
         case "${choice:-${default_choice}}" in
-            1) LLM_MODEL="gemma2:2b" ;;
-            2) LLM_MODEL="phi3:mini" ;;
-            3) LLM_MODEL="llama3.2:3b" ;;
-            4) LLM_MODEL="mistral:7b-instruct-q4_K_M" ;;
+            1) LLM_MODEL="gemma4:e2b" ;;
+            2) LLM_MODEL="gemma4:e4b" ;;
+            3) LLM_MODEL="gemma2:2b" ;;
+            4) LLM_MODEL="llama3.2:3b" ;;
             5) LLM_MODEL="qwen2.5:7b-instruct-q4_K_M" ;;
-            6)
+            6) LLM_MODEL="mistral:7b-instruct-q4_K_M" ;;
+            7) LLM_MODEL="phi3:mini" ;;
+            8)
                 echo -ne "  Inserisci il nome del modello Ollama (es: phi3:mini): "
                 read -r LLM_MODEL
-                LLM_MODEL="${LLM_MODEL:-phi3:mini}"
+                LLM_MODEL="${LLM_MODEL:-gemma4:e2b}"
                 ;;
             *) LLM_MODEL="${suggested_model}" ;;
         esac

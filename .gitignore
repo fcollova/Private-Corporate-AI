@@ -19,6 +19,7 @@ PCAI-rag.md
 LANGFLOW_Integration.md
 PCAI_rag_pageindex.md
 rag_catalog_v1.0.md
+claude-ollama.sh
 
 # Certificati SSL (generati localmente)
 nginx/ssl/*.crt
