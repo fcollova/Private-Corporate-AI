@@ -9,6 +9,10 @@
 .gemini
 .claude
 
+# Sperimentazioni
+project-brain/
+claude-ollama.sh
+
 # File locali da escludere su Github
 CLAUDE.md
 GEMINI.md
@@ -19,7 +23,8 @@ PCAI-rag.md
 LANGFLOW_Integration.md
 PCAI_rag_pageindex.md
 rag_catalog_v1.0.md
-claude-ollama.sh
+Claude_Contribution.md
+
 
 # Certificati SSL (generati localmente)
 nginx/ssl/*.crt
@@ -58,6 +63,9 @@ build/
 *.swo
 .DS_Store
 Thumbs.db
+
+# WSL/Windows metadata
+*:Zone.Identifier
 
 # Log
 *.log
