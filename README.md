@@ -66,7 +66,7 @@ The on-premise architecture offers compliance benefits that cloud-based AI syste
 | Requirement | How Private Corporate AI Addresses It |
 |---|---|
 | **Data Sovereignty** | No corporate data ever leaves the organization's servers. Eliminates data transfer issues to cloud GPAI providers (GPT-4, Gemini, etc.) subject to Art. 53 obligations. |
-| **Human Oversight by Design** | Every system response cites verifiable documentary sources. The system generates advisory outputs, not autonomous decisions (Art. 14). |
+| **Human Oversight by Design** | Every system response  cites verifiable documentary sources. The system generates advisory outputs, not autonomous decisions (Art. 14). |
 | **Integrated Cybersecurity** | SSL/TLS, isolated Docker networks, randomly generated credentials at each installation — basis for Art. 15 requirements. |
 | **Documentary Traceability** | Every indexed document is identifiable with a unique ID, timestamp and metadata — basis for Art. 12 record-keeping. |
 | **Transparency** | *(Phase 1 Roadmap)* AI disclosure disclaimer and AI literacy module for end users (Art. 4 & 50). |
